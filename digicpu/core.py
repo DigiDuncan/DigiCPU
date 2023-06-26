@@ -26,8 +26,6 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 
 class GameWindow(arcade.Window):
-    """Main Window """
-
     def __init__(self, width, height, title):
         self.now = arrow.now()
         self.sprite_list: arcade.SpriteList = None
@@ -46,7 +44,6 @@ class GameWindow(arcade.Window):
         super().__init__(width, height, title, update_rate = 1 / 240)
 
     def setup(self):
-        """ Set up everything with the game """
         self.sprite_list = arcade.SpriteList()
         self.cpu = CPU()
         t = pkg_resources.read_text(digicpu.data, "program.asm")
@@ -113,7 +110,6 @@ class GameWindow(arcade.Window):
             arcade.draw_text(f"Tick {self.tick}", 5, 45)
 
 def main():
-    """ Main function """
     window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     window.setup()
     arcade.run()
