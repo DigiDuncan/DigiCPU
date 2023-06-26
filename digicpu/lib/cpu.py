@@ -105,6 +105,8 @@ class CPU:
         self._last_instruction_size = 0
         self._halt_flag = False
 
+        self._current_instruction = ""
+
     @property
     def input_register(self) -> int:
         return self.registers[8]
@@ -299,38 +301,54 @@ class CPU:
         o1, o2, o3, o4 = extended_rom[self.program_counter + 1:self.program_counter + 5]
         match current_ins:
             case Opcodes.NOP:
-                pass
+                self._current_instruction = "NOP"
             case Opcodes.IMM:
+                self._current_instruction = f"IMM {o1}"
                 self.immediate(o1)
             case Opcodes.JMP:
+                self._current_instruction = f"JMP {o1}"
                 self.jump(o1)
             case Opcodes.CPY:
+                self._current_instruction = f"CPY {o1} {o2}"
                 self.copy(o1, o2)
             case Opcodes.ADD:
+                self._current_instruction = f"ADD {o1} {o2} {o3}"
                 self.add(o1, o2, o3)
             case Opcodes.SUB:
+                self._current_instruction = f"SUB {o1} {o2} {o3}"
                 self.sub(o1, o2, o3)
             case Opcodes.AND:
+                self._current_instruction = f"AND {o1} {o2} {o3}"
                 self.add(o1, o2, o3)
             case Opcodes.OR:
+                self._current_instruction = f"OR {o1} {o2} {o3}"
                 self.logical_or(o1, o2, o3)
             case Opcodes.NOT:
+                self._current_instruction = f"NOT {o1} {o2}"
                 self.logical_not(o1, o2)
             case Opcodes.EQ:
+                self._current_instruction = f"EQ {o1} {o2} {o3}"
                 self.conditional_eq(o1, o2, o3)
             case Opcodes.LT:
+                self._current_instruction = f"LT {o1} {o2} {o3}"
                 self.conditional_lt(o1, o2, o3)
             case Opcodes.LTE:
+                self._current_instruction = f"LTE {o1} {o2} {o3}"
                 self.conditional_lte(o1, o2, o3)
             case Opcodes.NEQ:
+                self._current_instruction = f"NEQ {o1} {o2} {o3}"
                 self.conditional_neq(o1, o2, o3)
             case Opcodes.GTE:
+                self._current_instruction = f"GTE {o1} {o2} {o3}"
                 self.conditional_gte(o1, o2, o3)
             case Opcodes.GT:
+                self._current_instruction = f"GT {o1} {o2} {o3}"
                 self.conditional_gt(o1, o2, o3)
             case Opcodes.SEG:
+                self._current_instruction = f"SEG {o1} {o2} {o3}"
                 self.int_to_sevenseg(o1, o2)
             case Opcodes.HLT:
+                self._current_instruction = "HLT"
                 self.halt()
             case _:
                 raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
