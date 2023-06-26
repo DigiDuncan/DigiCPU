@@ -40,8 +40,8 @@ class Opcodes:
     NOP = 0x0
     SEG = 0x64
     IN = 8
-    ADR = 9
-    DAT = 10
+    ADDR = 9
+    DATA = 10
     HLT = 0x0F
 
 widths = {
@@ -453,11 +453,11 @@ class CPU:
                 case "IN":
                     instructions[n] = Opcodes.IN
                     continue
-                case "ADR":
-                    instructions[n] = Opcodes.ADR
+                case "ADDR":
+                    instructions[n] = Opcodes.ADDR
                     continue
-                case "DAT":
-                    instructions[n] = Opcodes.DAT
+                case "DATA":
+                    instructions[n] = Opcodes.DATA
                     continue
                 case x:
                     if x in labels:
