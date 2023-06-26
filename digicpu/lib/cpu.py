@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 # LOGGING STUFF
@@ -42,6 +43,36 @@ class Opcodes:
     ADR = 9
     DAT = 10
     HLT = 0x0F
+
+widths = {
+    "IMM" : 2,
+    "JMP" : 2,
+    "CPY" : 3,
+    "ADD" : 4,
+    "SUB" : 4,
+    "AND" : 4,
+    "OR " : 4,
+    "NOT" : 3,
+    "EQ"  : 4,
+    "LT"  : 4,
+    "LTE" : 4,
+    "NEQ" : 4,
+    "GTE" : 4,
+    "GT"  : 4,
+    "NOP" : 1,
+    "SEG" : 4,
+    "HLT" : 1
+}
+
+def make_int(self, i: str) -> int:
+    if i.startswith("0X"):
+        return int(i[2:], 16)
+    elif i.startswith("0B"):
+        return int(i[2:], 2)
+    elif i.startswith("\""):
+        return ord(i[1]) % MAX_INT
+    else:
+        return int(i)
 
 def check_arithmetic(reg_1, reg_2, reg_to):
     """Sanity checks for arthimatic functions."""
@@ -315,6 +346,34 @@ class CPU:
 
     def load_string(self, s: str):
         """Load an assembly program from string."""
+        s = re.sub(r"#(.*)\n", "")  # comments
+
+        replacements = {}
+        constants: list[str] = re.findall(r"CONST (.+ .+)\n", s)
+        for constant in constants:
+            split = constant.split(maxsplit = 1)
+            replacements[split[0]] = split[1]
+
+        for key, value in replacements.items():
+            s = s.replace(key, value)
+
+        s = s.upper()
+
+        labels = {}
+        lines = s.split("\n")
+        n = 0
+        for line in lines:
+            line = line.strip()
+            if m := re.match(r"LABEL (.*)"):
+                labels[m.group(1)] = n
+            else:
+                for ins, w in widths.items():
+                    if line.startswith(ins):
+                        n += w
+                        break
+
+        s = re.sub(r"LABEL (.*)\n", "")
+
         s = s.replace("\n", " ")
         instructions = s.split()
         instructions = [i.strip().upper() for i in instructions]
@@ -381,14 +440,7 @@ class CPU:
                     instructions[n] = Opcodes.DAT
                     continue
 
-            if i.startswith("0X"):
-                instructions[n] = int(i[2:], 16)
-            elif i.startswith("0B"):
-                instructions[n] = int(i[2:], 2)
-            elif i.startswith("\""):
-                instructions[n] = ord(i[1]) % MAX_INT
-            else:
-                instructions[n] = int(i)
+            instructions[n] = make_int(i)
 
         for i in instructions:
             if not isinstance(i, int):
