@@ -35,3 +35,12 @@ Register 10 is a data bus and sends that value to the display in register 9.
 |No Operation                     |NOP      |0     |0     |0     |0     |0     |0     |0     |0     |0      |0  |
 |Int to Seven Segment             |SEG      |0     |1     |1     |0     |0     |1     |0     |0     |100    |64 |
 |Halt                             |HLT      |0     |0     |0     |0     |1     |1     |1     |1     |15     |F  |
+
+## Comments
+You can write a comment by starting you line with `#`. The assembler will ignore that line.
+
+## Cosntants
+You can define a constant like: `CONST <NAME> <VALUE>`. ~~You totally can't make macros with this.~~
+
+## Labels
+You can define a label with `LABEL <NAME>`, and then jump to it with `JMP <NAME>`.
