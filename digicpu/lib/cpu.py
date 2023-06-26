@@ -64,7 +64,9 @@ widths = {
     "HLT" : 1
 }
 
-def make_int(self, i: str) -> int:
+def make_int(i: str | int) -> int:
+    if isinstance(i, int):
+        return i
     if i.startswith("0X"):
         return int(i[2:], 16)
     elif i.startswith("0B"):
@@ -346,7 +348,7 @@ class CPU:
 
     def load_string(self, s: str):
         """Load an assembly program from string."""
-        s = re.sub(r"#(.*)\n", "")  # comments
+        s = re.sub(r"#(.*)\n", "", s)  # comments
 
         replacements = {}
         constants: list[str] = re.findall(r"CONST (.+ .+)\n", s)
@@ -364,7 +366,7 @@ class CPU:
         n = 0
         for line in lines:
             line = line.strip()
-            if m := re.match(r"LABEL (.*)"):
+            if m := re.match(r"LABEL (.*)", line):
                 labels[m.group(1)] = n
             else:
                 for ins, w in widths.items():
@@ -372,7 +374,7 @@ class CPU:
                         n += w
                         break
 
-        s = re.sub(r"LABEL (.*)\n", "")
+        s = re.sub(r"LABEL (.*)\n", "", s)
 
         s = s.replace("\n", " ")
         instructions = s.split()
@@ -439,6 +441,10 @@ class CPU:
                 case "DAT":
                     instructions[n] = Opcodes.DAT
                     continue
+                case x:
+                    if x in labels:
+                        instructions[n] = make_int(labels[x])
+                        continue
 
             instructions[n] = make_int(i)
 
