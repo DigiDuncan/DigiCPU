@@ -1,6 +1,20 @@
 # DigiCPU
 A software-based very basic CPU made in Python.
 
+## How it Works
+**Barely!** I made this with almost no knowledge on how a CPU works other than some guidance from [@Arceus3251](http://github.com/Arceus3251).
+
+Running the module will launch an [Arcade](https://api.arcade.academy/en/development/) window with eight seven-segment displays on it.
+
+Register 9 is an address bus for the display (1-8 is each digit, left to right.)
+Register 10 is a data bus and sends that value to the display in register 9.
+
+## Controls
+`R`: Reset the CPU.
+`[SPACE]` Pause the CPU.
+`Keypad -`: Speed up the CPU.
+`Keypad +`: Slow down the CPU.
+
 ## Opcodes
 |Canon Name                       |Shorthand|Byte 7|Byte 6|Byte 5|Byte 4|Byte 3|Byte 2|Byte 1|Byte 0|Decimal|Hex|
 |---------------------------------|---------|------|------|------|------|------|------|------|------|-------|---|
