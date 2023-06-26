@@ -32,7 +32,6 @@ class Opcodes:
     NOT = 0x63
     ADD = 0xAF
     SUB = 0xA8
-    MOD = 0xA9
     SEG = 0x6C
     EQ = 0xB1
     LT = 0xB2
@@ -55,7 +54,6 @@ widths = {
     "NOT" : 3,
     "ADD" : 4,
     "SUB" : 4,
-    "MOD" : 4,
     "SEG" : 4,
     "EQ"  : 4,
     "LT"  : 4,
@@ -174,13 +172,6 @@ class CPU:
         logger.debug(f"SUB {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] - self.registers[reg_2]) % MAX_INT
-
-    def mod(self, reg_1, reg_2, reg_to):
-        """MOD <A> <B> <to>
-        Modulo the values from registers A and B and copy it to register `to`."""
-        logger.debug(f"MOD {reg_1} {reg_2} {reg_to}")
-        check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] % self.registers[reg_2]) % MAX_INT
 
     def logical_and(self, reg_1, reg_2, reg_to):
         """AND <A> <B> <to>
@@ -326,9 +317,6 @@ class CPU:
             case Opcodes.SUB:
                 self._current_instruction = f"SUB {o1} {o2} {o3}"
                 self.sub(o1, o2, o3)
-            case Opcodes.MOD:
-                self._current_instruction = f"MOD {o1} {o2} {o3}"
-                self.mod(o1, o2, o3)
             case Opcodes.AND:
                 self._current_instruction = f"AND {o1} {o2} {o3}"
                 self.add(o1, o2, o3)
@@ -428,9 +416,6 @@ class CPU:
                     continue
                 case "SUB":
                     instructions[n] = Opcodes.SUB
-                    continue
-                case "MOD":
-                    instructions[n] = Opcodes.MOD
                     continue
                 case "AND":
                     instructions[n] = Opcodes.AND

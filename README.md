@@ -27,7 +27,6 @@ Register 10 is a data bus and sends that value to the display in register 9.
 |Logical Not                      |NOT      |0     |1     |1     |0     |0     |0     |1     |1     |99     |63 |
 |Add                              |ADD      |1     |0     |1     |0     |1     |1     |1     |1     |175    |AF |
 |Subtract                         |SUB      |1     |0     |1     |0     |1     |0     |0     |0     |168    |A8 |
-|Modulo                           |MOD      |1     |0     |1     |0     |1     |0     |0     |1     |169    |A9 |
 |Int to Seven Segment             |SEG      |0     |1     |1     |0     |1     |1     |0     |0     |108    |6C |
 |Conditional Equals               |EQ       |1     |0     |1     |1     |0     |0     |0     |1     |177    |B1 |
 |Conditional Less Than            |LT       |1     |0     |1     |1     |0     |0     |1     |0     |178    |B2 |
