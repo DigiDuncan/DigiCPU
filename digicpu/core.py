@@ -35,8 +35,13 @@ class GameWindow(arcade.Window):
         
         self.digits: list[SevenSeg] = []
 
+        self.fps = 240
         self.tick = 0
         self.tick_multiplier = 1
+
+        self.fps_text: arcade.Text = None
+        self.rate_text: arcade.Text = None
+        self.tick_text: arcade.Text = None
 
         self.paused = False
 
@@ -50,6 +55,12 @@ class GameWindow(arcade.Window):
         self.cpu.load_string(t)
         self.output_display = SevenSegmentDisplay()
         self.digits = []
+
+        self.fps_text = arcade.Text(f"{self.fps} FPS", 5, 5)
+        self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25)
+        self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45)
+        self.instruction_text = arcade.Text(f"NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top")
+        self.program_text = arcade.Text(f"Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
 
         for _ in range(8):
             self.digits.append(SevenSeg(SCREEN_WIDTH // 9))
@@ -80,9 +91,14 @@ class GameWindow(arcade.Window):
 
     def on_update(self, delta_time):
         self.fps = round(1 / delta_time)
+        self.fps_text.value = f"{self.fps} FPS"
         self.now = arrow.now()
         if self.paused:
+            self.tick_text.value = f"Tick {self.tick} | PAUSED"
             return
+        else:
+            self.tick_text.value = f"Tick {self.tick}"
+
         if not self.cpu._halt_flag:
             self.tick += 1
         if self.tick % self.tick_multiplier == 0:
@@ -99,15 +115,18 @@ class GameWindow(arcade.Window):
 
             self.sprite_list.update()
 
+        self.rate_text.value = f"Tick Rate: 1:{self.tick_multiplier}"
+        self.instruction_text.value = self.cpu._current_instruction
+        self.program_text.value = str(self.cpu.program_counter)
+
     def on_draw(self):
         arcade.start_render()
         self.sprite_list.draw()
-        arcade.draw_text(f"{self.fps} FPS", 5, 5)
-        arcade.draw_text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25)
-        if self.paused:
-            arcade.draw_text(f"Tick {self.tick} | PAUSED", 5, 45)
-        else:
-            arcade.draw_text(f"Tick {self.tick}", 5, 45)
+        self.fps_text.draw()
+        self.rate_text.draw()
+        self.tick_text.draw()
+        self.instruction_text.draw()
+        self.program_text.draw()
 
 def main():
     window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
