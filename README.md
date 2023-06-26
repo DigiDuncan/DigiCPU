@@ -14,6 +14,7 @@ Register 10 is a data bus and sends that value to the display in register 9.
 - `[SPACE]` Pause the CPU.
 - `Keypad -`: Speed up the CPU.
 - `Keypad +`: Slow down the CPU.
+- `ZXCVBNM,`: Hold each key to set the input value to the CPU.
 
 ## Opcodes
 |Canon Name                       |Shorthand|Byte 7|Byte 6|Byte 5|Byte 4|Byte 3|Byte 2|Byte 1|Byte 0|Decimal|Hex|

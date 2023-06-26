@@ -42,6 +42,10 @@ class GameWindow(arcade.Window):
         self.fps_text: arcade.Text = None
         self.rate_text: arcade.Text = None
         self.tick_text: arcade.Text = None
+        self.instruction_text: arcade.Text = None
+        self.program_text: arcade.Text = None
+
+        self.input_value = 0
 
         self.paused = False
 
@@ -61,6 +65,7 @@ class GameWindow(arcade.Window):
         self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45)
         self.instruction_text = arcade.Text(f"NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top")
         self.program_text = arcade.Text(f"Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
+        self.input_text = arcade.Text(f"Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top")
 
         for _ in range(8):
             self.digits.append(SevenSeg(SCREEN_WIDTH // 9))
@@ -86,8 +91,41 @@ class GameWindow(arcade.Window):
         elif key == arcade.key.SPACE:
             self.paused = not self.paused
 
+        elif key == arcade.key.Z:
+            self.input_value += 128
+        elif key == arcade.key.X:
+            self.input_value += 64
+        elif key == arcade.key.C:
+            self.input_value += 32
+        elif key == arcade.key.V:
+            self.input_value += 16
+        elif key == arcade.key.B:
+            self.input_value += 8
+        elif key == arcade.key.N:
+            self.input_value += 4
+        elif key == arcade.key.M:
+            self.input_value += 2
+        elif key == arcade.key.COMMA:
+            self.input_value += 1
+
+
     def on_key_release(self, key, modifiers):
-        pass
+        if key == arcade.key.Z:
+            self.input_value -= 128
+        elif key == arcade.key.X:
+            self.input_value -= 64
+        elif key == arcade.key.C:
+            self.input_value -= 32
+        elif key == arcade.key.V:
+            self.input_value -= 16
+        elif key == arcade.key.B:
+            self.input_value -= 8
+        elif key == arcade.key.N:
+            self.input_value -= 4
+        elif key == arcade.key.M:
+            self.input_value -= 2
+        elif key == arcade.key.COMMA:
+            self.input_value -= 1
 
     def on_update(self, delta_time):
         self.fps = round(1 / delta_time)
@@ -102,6 +140,8 @@ class GameWindow(arcade.Window):
         if not self.cpu._halt_flag:
             self.tick += 1
         if self.tick % self.tick_multiplier == 0:
+            self.cpu.input_register = self.input_value
+
             if self.cpu.program_counter < 254:
                 self.cpu.step()
 
@@ -117,7 +157,8 @@ class GameWindow(arcade.Window):
 
         self.rate_text.value = f"Tick Rate: 1:{self.tick_multiplier}"
         self.instruction_text.value = self.cpu._current_instruction
-        self.program_text.value = str(self.cpu.program_counter)
+        self.program_text.value = f"Program Counter: {self.cpu.program_counter}"
+        self.input_text.value = f"Input: {self.input_value}"
 
     def on_draw(self):
         arcade.start_render()
@@ -127,6 +168,7 @@ class GameWindow(arcade.Window):
         self.tick_text.draw()
         self.instruction_text.draw()
         self.program_text.draw()
+        self.input_text.draw()
 
 def main():
     window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
