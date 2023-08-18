@@ -1,5 +1,6 @@
 import arcade
 
+
 def get_segment_point_list(vertical: bool, length: int, thickness: int, x_offset = 0, y_offset = 0):
     points: list[tuple] = []
     if not vertical:

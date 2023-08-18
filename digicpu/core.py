@@ -25,6 +25,7 @@ SCREEN_TITLE = "DigiCPU"
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 
+
 class GameWindow(arcade.Window):
     def __init__(self, width, height, title):
         self.now = arrow.now()
@@ -32,7 +33,7 @@ class GameWindow(arcade.Window):
 
         self.cpu: CPU = None
         self.output_display: SevenSegmentDisplay = None
-        
+
         self.digits: list[SevenSeg] = []
 
         self.fps = 240
@@ -63,9 +64,9 @@ class GameWindow(arcade.Window):
         self.fps_text = arcade.Text(f"{self.fps} FPS", 5, 5)
         self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25)
         self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45)
-        self.instruction_text = arcade.Text(f"NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top")
-        self.program_text = arcade.Text(f"Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
-        self.input_text = arcade.Text(f"Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top")
+        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top")
+        self.program_text = arcade.Text("Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
+        self.input_text = arcade.Text("Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top")
 
         for _ in range(8):
             self.digits.append(SevenSeg(SCREEN_WIDTH // 9))
@@ -107,7 +108,6 @@ class GameWindow(arcade.Window):
             self.input_value += 2
         elif key == arcade.key.COMMA:
             self.input_value += 1
-
 
     def on_key_release(self, key, modifiers):
         if key == arcade.key.Z:
@@ -169,6 +169,7 @@ class GameWindow(arcade.Window):
         self.instruction_text.draw()
         self.program_text.draw()
         self.input_text.draw()
+
 
 def main():
     window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)

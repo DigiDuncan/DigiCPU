@@ -22,6 +22,7 @@ ROM_SIZE = 256
 MAX_INT = 256
 MAX_REG = 10
 
+
 class Opcodes:
     NOP = 0x00
     IMM = 0x01
@@ -44,6 +45,7 @@ class Opcodes:
     ADDR = 9
     DATA = 10
 
+
 widths = {
     "NOP" : 1,
     "IMM" : 2,
@@ -64,6 +66,7 @@ widths = {
     "HLT" : 1
 }
 
+
 def make_int(i: str | int) -> int:
     if isinstance(i, int):
         return i
@@ -76,6 +79,7 @@ def make_int(i: str | int) -> int:
     else:
         return int(i)
 
+
 def check_arithmetic(reg_1, reg_2, reg_to):
     """Sanity checks for arthimatic functions."""
     if reg_1 > MAX_REG:
@@ -84,7 +88,8 @@ def check_arithmetic(reg_1, reg_2, reg_to):
         raise ValueError(f"Register {reg_2} greater than {MAX_REG}!")
     if reg_to > MAX_REG:
         raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
-    
+
+
 def check_logic(reg_1, reg_2, jump):
     """Sanity checks for logical functions."""
     if reg_1 > MAX_REG:
@@ -93,6 +98,7 @@ def check_logic(reg_1, reg_2, jump):
         raise ValueError(f"Register {reg_2} greater than {MAX_REG}!")
     if jump > ROM_SIZE:
         raise ValueError(f"Jump point {jump} greater than ROM size {ROM_SIZE}!")
+
 
 class CPU:
     """A high-level implemenation of a CPU's functionality."""
@@ -110,15 +116,15 @@ class CPU:
     @property
     def input_register(self) -> int:
         return self.registers[8]
-    
+
     @input_register.setter
     def input_register(self, v):
         self.registers[8] = v
-    
+
     @property
     def address_register(self) -> int:
         return self.registers[9]
-    
+
     @address_register.setter
     def address_register(self, v):
         self.registers[9] = v
@@ -126,7 +132,7 @@ class CPU:
     @property
     def data_register(self) -> int:
         return self.registers[10]
-    
+
     @data_register.setter
     def data_register(self, v):
         self.registers[10] = v
@@ -149,7 +155,7 @@ class CPU:
         if value >= MAX_INT:
             raise ValueError(f"Immediate value {value} higher than {MAX_INT}!")
         self.registers[0] = value
-    
+
     def jump(self, position: int):
         """JMP <position>
         Jump to position `position` in ROM."""
@@ -201,7 +207,7 @@ class CPU:
         check_logic(reg_1, reg_2, jump)
         if self.registers[reg_1] == self.registers[reg_2]:
             self.jump(jump)
-    
+
     def conditional_neq(self, reg_1, reg_2, jump):
         """NEQ <A> <B> <jump>
         If the value in register A doesn't equal the value in register B, jump to position `jump`."""
@@ -352,7 +358,7 @@ class CPU:
                 self.halt()
             case _:
                 raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
-            
+
         self._last_instruction_size = (current_ins & 0b11000000) >> 6
         if not self._just_jumped:
             self.program_counter += (self._last_instruction_size + 2)
@@ -469,7 +475,7 @@ class CPU:
         for i in instructions:
             if not isinstance(i, int):
                 raise ValueError(f"Unknown instruction! {i}")
-        
+
         self.load(instructions)
 
     def reset(self):
