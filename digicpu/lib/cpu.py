@@ -30,14 +30,15 @@ class Opcode:
         self.width = width
         self.function = func
 
-    def run(self, *args) -> None:
+    def run(self, args: list[int]) -> None:
         if not self.function:
             return
+        args = args[:self.width - 1]
         self.function(*args)
 
 
 class Registers:
-    IM = 0
+    IMM = 0
     IN = 8
     ADDR = 9
     DATA = 10
@@ -154,7 +155,7 @@ class CPU:
         logger.debug(f"IMM {value}")
         if value >= MAX_INT:
             raise ValueError(f"Immediate value {value} higher than {MAX_INT}!")
-        self.registers[0] = value
+        self.registers[Registers.IMM] = value
 
     def jump(self, position: int):
         """JMP <position>
@@ -300,23 +301,28 @@ class CPU:
 
     def step(self):
         """Run one clock cycle. Just keep doing this until we're out of ROM."""
+        # If we're halted, we're... halted.
         if self._halt_flag:
             return
+
+        # Get the current instruction and process it.
         current_ins = self.rom[self.program_counter]
+        # This is needed because we're genericizing here and we need no not get IndexErrors.
         extended_rom = self.rom + [0, 0, 0, 0]
+        # Get the next few values in case they're operands.
         operands = extended_rom[self.program_counter + 1:self.program_counter + 5]
         found = False
         for o in self.opcodes:
             if o.value != current_ins:
                 continue
             found = True
-            #  GOD THIS LOOKS HACKY
-            ops = operands[:o.width - 1]
-            o.function(*ops)
+            o.run(operands)
         if not found:
             raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
 
+        # Instruction isze is encoded with the first 2 bits of the opcode.
         self._last_instruction_size = (current_ins & 0b11000000) >> 6
+        # If we just jumped, we don't need to increment the program counter.
         if not self._just_jumped:
             self.program_counter += (self._last_instruction_size + 2)
         self._just_jumped = False
@@ -331,41 +337,55 @@ class CPU:
         """Load an assembly program from string."""
         s = re.sub(r"#(.*)\n", "", s)  # comments
 
+        # Deal with constants. It's not really an opcode, so it's not coded like one.
         replacements = {}
         constants: list[str] = re.findall(r"CONST (.+ .+)\n", s)
         for constant in constants:
             split = constant.split(maxsplit = 1)
             replacements[split[0]] = split[1]
 
+        # Replace everything we determined needs to be, e.g.: constants.
         for key, value in replacements.items():
             s = s.replace(key, value)
 
+        # Make sure everything's uppercase, since we assume that a lot.
         s = s.upper()
 
+        # Store labels for later.
         labels = {}
         lines = s.split("\n")
         n = 0
         for line in lines:
             line = line.strip()
+            # If we find a label definition, save it.
             if m := re.match(r"LABEL (.*)", line):
                 labels[m.group(1)] = n
             else:
+                # Step over opcodes, since we know how wide they are.
                 for o in self.opcodes:
                     if line.startswith(o.assembly):
                         n += o.width
                         break
 
+        # Replace all labels with nothing, since we dealt with them.
         s = re.sub(r"LABEL (.*)\n", "", s)
 
+        # No newlines.
         s = s.replace("\n", " ")
+
+        # Split the instructions by spaces and clean then up.
         instructions = s.split()
         instructions = [i.strip().upper() for i in instructions]
+
+        # Step through these instructions.
         for n, i in enumerate(instructions):
             match i:
+                # Is a valid Opcode.
                 case x if x in self.valid_opcodes:
                     opcode = next(o for o in self.opcodes if o.assembly == x)
                     instructions[n] = opcode.value
                     continue
+                # Register aliases
                 case "IN":
                     instructions[n] = Registers.IN
                     continue
@@ -375,13 +395,16 @@ class CPU:
                 case "DATA":
                     instructions[n] = Registers.DATA
                     continue
+                # Otherwise, is this a label?
                 case x:
                     if x in labels:
                         instructions[n] = make_int(labels[x])
                         continue
 
+            # Otherwise it's just a number I guess.
             instructions[n] = make_int(i)
 
+        # If we didn't turn something into a number, something messed up.
         for i in instructions:
             if not isinstance(i, int):
                 raise ValueError(f"Unknown instruction! {i}")
