@@ -24,11 +24,15 @@ MAX_REG = 10
 
 
 class Opcode:
-    def __init__(self, value: int, assembly: str, width: int, func: Optional[callable] = None):
+    def __init__(self, value: int, assembly: str, func: Optional[callable] = None):
         self.value = value
         self.assembly = assembly
-        self.width = width
         self.function = func
+
+    @property
+    def width(self) -> int:
+        # Instruction size is encoded with the first 2 bits of the opcode.
+        return ((self.value & 0b11000000) >> 6) + 1
 
     def run(self, args: list[int]) -> None:
         if not self.function:
@@ -85,23 +89,23 @@ class CPU:
         self.rom: list[int] = [0] * ROM_SIZE
 
         self.opcodes = [
-            Opcode(0x00, "NOP", 1),
-            Opcode(0x01, "IMM", 2, self.immediate),
-            Opcode(0x04, "JMP", 2, self.jump),
-            Opcode(0x51, "CPY", 3, self.copy),
-            Opcode(0xA0, "AND", 4, self.logical_and),
-            Opcode(0xA2, "OR", 4, self.logical_or),
-            Opcode(0x63, "NOT", 3, self.logical_not),
-            Opcode(0xAF, "ADD", 4, self.add),
-            Opcode(0xA8, "SUB", 4, self.sub),
-            Opcode(0x6C, "SEG", 4, self.int_to_sevenseg),
-            Opcode(0xB1, "EQ", 4, self.conditional_eq),
-            Opcode(0xB2, "LT", 4, self.conditional_lt),
-            Opcode(0xB3, "LTE", 4, self.conditional_lte),
-            Opcode(0xB5, "NEQ", 4, self.conditional_neq),
-            Opcode(0xB6, "GTE", 4, self.conditional_gte),
-            Opcode(0xB7, "GT", 4, self.conditional_gt),
-            Opcode(0x0F, "HLT", 1, self.halt),
+            Opcode(0x00, "NOP"),
+            Opcode(0x41, "IMM", self.immediate),
+            Opcode(0x44, "JMP", self.jump),
+            Opcode(0x91, "CPY", self.copy),
+            Opcode(0xE0, "AND", self.logical_and),
+            Opcode(0xE2, "OR",  self.logical_or),
+            Opcode(0xA3, "NOT", self.logical_not),
+            Opcode(0xEF, "ADD", self.add),
+            Opcode(0xE8, "SUB", self.sub),
+            Opcode(0xEC, "SEG", self.int_to_sevenseg),
+            Opcode(0xF1, "EQ",  self.conditional_eq),
+            Opcode(0xF2, "LT",  self.conditional_lt),
+            Opcode(0xF3, "LTE", self.conditional_lte),
+            Opcode(0xF5, "NEQ", self.conditional_neq),
+            Opcode(0xF6, "GTE", self.conditional_gte),
+            Opcode(0xF7, "GT",  self.conditional_gt),
+            Opcode(0x0F, "HLT", self.halt),
         ]
 
         self._just_jumped = False
@@ -317,15 +321,14 @@ class CPU:
                 continue
             found = True
             o.run(operands)
+            self._last_instruction_size = o.width
             self._current_instruction = f"{o.assembly} {' '.join(str(o) for o in operands[:o.width -1])}"
         if not found:
             raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
 
-        # Instruction isze is encoded with the first 2 bits of the opcode.
-        self._last_instruction_size = (current_ins & 0b11000000) >> 6
         # If we just jumped, we don't need to increment the program counter.
         if not self._just_jumped:
-            self.program_counter += (self._last_instruction_size + 2)
+            self.program_counter += self._last_instruction_size
         self._just_jumped = False
 
     def load(self, rom: list[int]):
