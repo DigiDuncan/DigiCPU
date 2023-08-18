@@ -64,7 +64,7 @@ class GameWindow(arcade.Window):
         self.fps_text = arcade.Text(f"{self.fps} FPS", 5, 5)
         self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25)
         self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45)
-        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top")
+        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top", font_name = "Fira Code")
         self.program_text = arcade.Text("Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
         self.input_text = arcade.Text("Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top")
 

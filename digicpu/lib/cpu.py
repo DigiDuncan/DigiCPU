@@ -317,6 +317,7 @@ class CPU:
                 continue
             found = True
             o.run(operands)
+            self._current_instruction = f"{o.assembly} {' '.join(str(o) for o in operands[:o.width -1])}"
         if not found:
             raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
 
