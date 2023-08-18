@@ -1,5 +1,5 @@
 import re
-from typing import Literal
+from typing import Literal, Optional
 
 # LOGGING STUFF
 import logging
@@ -23,48 +23,24 @@ MAX_INT = 256
 MAX_REG = 10
 
 
-class Opcodes:
-    NOP = 0x00
-    IMM = 0x01
-    JMP = 0x04
-    CPY = 0x51
-    AND = 0xA0
-    OR = 0xA2
-    NOT = 0x63
-    ADD = 0xAF
-    SUB = 0xA8
-    SEG = 0x6C
-    EQ = 0xB1
-    LT = 0xB2
-    LTE = 0xB3
-    NEQ = 0xB5
-    GTE = 0xB6
-    GT = 0xB7
-    HLT = 0x0F
+class Opcode:
+    def __init__(self, value: int, assembly: str, width: int, func: Optional[callable] = None):
+        self.value = value
+        self.assembly = assembly
+        self.width = width
+        self.function = func
+
+    def run(self, *args) -> None:
+        if not self.function:
+            return
+        self.function(*args)
+
+
+class Registers:
+    IM = 0
     IN = 8
     ADDR = 9
     DATA = 10
-
-
-widths = {
-    "NOP" : 1,
-    "IMM" : 2,
-    "JMP" : 2,
-    "CPY" : 3,
-    "AND" : 4,
-    "OR " : 4,
-    "NOT" : 3,
-    "ADD" : 4,
-    "SUB" : 4,
-    "SEG" : 4,
-    "EQ"  : 4,
-    "LT"  : 4,
-    "LTE" : 4,
-    "NEQ" : 4,
-    "GTE" : 4,
-    "GT"  : 4,
-    "HLT" : 1
-}
 
 
 def make_int(i: str | int) -> int:
@@ -107,11 +83,35 @@ class CPU:
         self.registers: list[int] = [0] * 11
         self.rom: list[int] = [0] * ROM_SIZE
 
+        self.opcodes = [
+            Opcode(0x00, "NOP", 1),
+            Opcode(0x01, "IMM", 2, self.immediate),
+            Opcode(0x04, "JMP", 2, self.jump),
+            Opcode(0x51, "CPY", 3, self.copy),
+            Opcode(0xA0, "AND", 4, self.logical_and),
+            Opcode(0xA2, "OR", 4, self.logical_or),
+            Opcode(0x63, "NOT", 3, self.logical_not),
+            Opcode(0xAF, "ADD", 4, self.add),
+            Opcode(0xA8, "SUB", 4, self.sub),
+            Opcode(0x6C, "SEG", 4, self.int_to_sevenseg),
+            Opcode(0xB1, "EQ", 4, self.conditional_eq),
+            Opcode(0xB2, "LT", 4, self.conditional_lt),
+            Opcode(0xB3, "LTE", 4, self.conditional_lte),
+            Opcode(0xB5, "NEQ", 4, self.conditional_neq),
+            Opcode(0xB6, "GTE", 4, self.conditional_gte),
+            Opcode(0xB7, "GT", 4, self.conditional_gt),
+            Opcode(0x0F, "HLT", 1, self.halt),
+        ]
+
         self._just_jumped = False
         self._last_instruction_size = 0
         self._halt_flag = False
 
         self._current_instruction = ""
+
+    @property
+    def valid_opcodes(self) -> list[str]:
+        return [o.assembly for o in self.opcodes]
 
     @property
     def input_register(self) -> int:
@@ -304,60 +304,17 @@ class CPU:
             return
         current_ins = self.rom[self.program_counter]
         extended_rom = self.rom + [0, 0, 0, 0]
-        o1, o2, o3, o4 = extended_rom[self.program_counter + 1:self.program_counter + 5]
-        match current_ins:
-            case Opcodes.NOP:
-                self._current_instruction = "NOP"
-            case Opcodes.IMM:
-                self._current_instruction = f"IMM {o1}"
-                self.immediate(o1)
-            case Opcodes.JMP:
-                self._current_instruction = f"JMP {o1}"
-                self.jump(o1)
-            case Opcodes.CPY:
-                self._current_instruction = f"CPY {o1} {o2}"
-                self.copy(o1, o2)
-            case Opcodes.ADD:
-                self._current_instruction = f"ADD {o1} {o2} {o3}"
-                self.add(o1, o2, o3)
-            case Opcodes.SUB:
-                self._current_instruction = f"SUB {o1} {o2} {o3}"
-                self.sub(o1, o2, o3)
-            case Opcodes.AND:
-                self._current_instruction = f"AND {o1} {o2} {o3}"
-                self.add(o1, o2, o3)
-            case Opcodes.OR:
-                self._current_instruction = f"OR {o1} {o2} {o3}"
-                self.logical_or(o1, o2, o3)
-            case Opcodes.NOT:
-                self._current_instruction = f"NOT {o1} {o2}"
-                self.logical_not(o1, o2)
-            case Opcodes.EQ:
-                self._current_instruction = f"EQ {o1} {o2} {o3}"
-                self.conditional_eq(o1, o2, o3)
-            case Opcodes.LT:
-                self._current_instruction = f"LT {o1} {o2} {o3}"
-                self.conditional_lt(o1, o2, o3)
-            case Opcodes.LTE:
-                self._current_instruction = f"LTE {o1} {o2} {o3}"
-                self.conditional_lte(o1, o2, o3)
-            case Opcodes.NEQ:
-                self._current_instruction = f"NEQ {o1} {o2} {o3}"
-                self.conditional_neq(o1, o2, o3)
-            case Opcodes.GTE:
-                self._current_instruction = f"GTE {o1} {o2} {o3}"
-                self.conditional_gte(o1, o2, o3)
-            case Opcodes.GT:
-                self._current_instruction = f"GT {o1} {o2} {o3}"
-                self.conditional_gt(o1, o2, o3)
-            case Opcodes.SEG:
-                self._current_instruction = f"SEG {o1} {o2} {o3}"
-                self.int_to_sevenseg(o1, o2)
-            case Opcodes.HLT:
-                self._current_instruction = "HLT"
-                self.halt()
-            case _:
-                raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
+        operands = extended_rom[self.program_counter + 1:self.program_counter + 5]
+        found = False
+        for o in self.opcodes:
+            if o.value != current_ins:
+                continue
+            found = True
+            #  GOD THIS LOOKS HACKY
+            ops = operands[:o.width - 1]
+            o.function(*ops)
+        if not found:
+            raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
 
         self._last_instruction_size = (current_ins & 0b11000000) >> 6
         if not self._just_jumped:
@@ -393,9 +350,9 @@ class CPU:
             if m := re.match(r"LABEL (.*)", line):
                 labels[m.group(1)] = n
             else:
-                for ins, w in widths.items():
-                    if line.startswith(ins):
-                        n += w
+                for o in self.opcodes:
+                    if line.startswith(o.assembly):
+                        n += o.width
                         break
 
         s = re.sub(r"LABEL (.*)\n", "", s)
@@ -405,65 +362,18 @@ class CPU:
         instructions = [i.strip().upper() for i in instructions]
         for n, i in enumerate(instructions):
             match i:
-                case "NOP":
-                    instructions[n] = Opcodes.NOP
-                    continue
-                case "IMM":
-                    instructions[n] = Opcodes.IMM
-                    continue
-                case "JMP":
-                    instructions[n] = Opcodes.JMP
-                    continue
-                case "CPY":
-                    instructions[n] = Opcodes.CPY
-                    continue
-                case "ADD":
-                    instructions[n] = Opcodes.ADD
-                    continue
-                case "SUB":
-                    instructions[n] = Opcodes.SUB
-                    continue
-                case "AND":
-                    instructions[n] = Opcodes.AND
-                    continue
-                case "OR":
-                    instructions[n] = Opcodes.OR
-                    continue
-                case "NOT":
-                    instructions[n] = Opcodes.NOT
-                    continue
-                case "EQ":
-                    instructions[n] = Opcodes.EQ
-                    continue
-                case "LT":
-                    instructions[n] = Opcodes.LT
-                    continue
-                case "LTE":
-                    instructions[n] = Opcodes.LTE
-                    continue
-                case "NEQ":
-                    instructions[n] = Opcodes.NEQ
-                    continue
-                case "GTE":
-                    instructions[n] = Opcodes.GTE
-                    continue
-                case "GT":
-                    instructions[n] = Opcodes.GT
-                    continue
-                case "SEG":
-                    instructions[n] = Opcodes.SEG
-                    continue
-                case "HLT":
-                    instructions[n] = Opcodes.HLT
+                case x if x in self.valid_opcodes:
+                    opcode = next(o for o in self.opcodes if o.assembly == x)
+                    instructions[n] = opcode.value
                     continue
                 case "IN":
-                    instructions[n] = Opcodes.IN
+                    instructions[n] = Registers.IN
                     continue
                 case "ADDR":
-                    instructions[n] = Opcodes.ADDR
+                    instructions[n] = Registers.ADDR
                     continue
                 case "DATA":
-                    instructions[n] = Opcodes.DATA
+                    instructions[n] = Registers.DATA
                     continue
                 case x:
                     if x in labels:
