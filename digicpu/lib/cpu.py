@@ -42,7 +42,7 @@ class Opcode:
 
 
 class Registers:
-    IMM = 0
+    IMR = 0
     IN = 8
     ADDR = 9
     DATA = 10
@@ -159,7 +159,7 @@ class CPU:
         logger.debug(f"IMM {value}")
         if value >= MAX_INT:
             raise ValueError(f"Immediate value {value} higher than {MAX_INT}!")
-        self.registers[Registers.IMM] = value
+        self.registers[Registers.IMR] = value
 
     def jump(self, position: int):
         """JMP <position>
@@ -390,6 +390,9 @@ class CPU:
                     instructions[n] = opcode.value
                     continue
                 # Register aliases
+                case "IMR":
+                    instructions[n] = Registers.IMR
+                    continue
                 case "IN":
                     instructions[n] = Registers.IN
                     continue
