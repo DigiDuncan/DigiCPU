@@ -4,6 +4,8 @@ from typing import Literal, Optional
 # LOGGING STUFF
 import logging
 
+from digicpu.lib.ram import RAM
+
 logger = logging.getLogger("digicpu")
 logging.basicConfig(level=logging.INFO)
 logger.setLevel(logging.DEBUG)
@@ -19,6 +21,7 @@ except ImportError:
 
 Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 ROM_SIZE = 256
+RAM_SIZE = 256
 MAX_INT = 256
 MAX_REG = 10
 
@@ -87,6 +90,7 @@ class CPU:
         self.program_counter: int = 0
         self.registers: list[int] = [0] * 11
         self.rom: list[int] = [0] * ROM_SIZE
+        self.ram: RAM = RAM(RAM_SIZE)
 
         self.opcodes = [
             Opcode(0x00, "NOP"),
@@ -299,6 +303,26 @@ class CPU:
                 self.registers[reg_to] = 0b0001000
             case 88 | 120:
                 self.registers[reg_to] = 0
+
+    def ram_load(self, pos_from, reg_to):
+        """NEQ <pos_from> <reg_to>
+        Load the value from position `from_pos` in RAM into register `to_reg`."""
+        logger.debug(f"RLD {pos_from} {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        if pos_from > ROM_SIZE:
+            raise ValueError(f"Position {pos_from} greater than {ROM_SIZE}!")
+        self.registers[reg_to] = self.ram.load(pos_from)
+
+    def ram_save(self, reg_from, pos_to):
+        """NEQ <from_reg> <to_pos>
+        Save the value from register `from_reg` to RAM position `to_pos`."""
+        logger.debug(f"RSV {reg_from} {pos_to}")
+        if reg_from > MAX_REG:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        if pos_to > ROM_SIZE:
+            raise ValueError(f"Position {pos_to} greater than {ROM_SIZE}!")
+        self.ram.save(pos_to, self.registers[reg_from])
 
     def halt(self):
         self._halt_flag = True
