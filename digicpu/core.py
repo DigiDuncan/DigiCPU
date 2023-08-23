@@ -160,6 +160,21 @@ class GameWindow(arcade.Window):
         self.program_text.value = f"Program Counter: {self.cpu.program_counter}"
         self.input_text.value = f"Input: {self.input_value}"
 
+    def draw_ram(self):
+        SQUARE_SIZE = 8
+        WIDTH = 16
+        HEIGHT = self.cpu.ram.size // WIDTH
+        BORDER = 4
+        start_x = SCREEN_WIDTH - (SQUARE_SIZE * WIDTH + BORDER)
+        start_y = SQUARE_SIZE * HEIGHT + BORDER
+        for i in range(HEIGHT):
+            for j in range(WIDTH):
+                x = start_x + (j * SQUARE_SIZE)
+                y = start_y - (i * SQUARE_SIZE)
+                c = self.cpu.ram.load(i * WIDTH + j)
+                color = (c, c, c, 255)
+                arcade.draw_lrtb_rectangle_filled(x, x + SQUARE_SIZE, y, y - SQUARE_SIZE, color)
+
     def on_draw(self):
         arcade.start_render()
         self.sprite_list.draw()
@@ -169,6 +184,7 @@ class GameWindow(arcade.Window):
         self.instruction_text.draw()
         self.program_text.draw()
         self.input_text.draw()
+        self.draw_ram()
 
 
 def main():
