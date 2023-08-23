@@ -100,8 +100,8 @@ class CPU:
             Opcode(0xE0, "AND", self.logical_and),
             Opcode(0xE2, "OR",  self.logical_or),
             Opcode(0xA3, "NOT", self.logical_not),
-            Opcode(0xEF, "ADD", self.add),
-            Opcode(0xE8, "SUB", self.sub),
+            Opcode(0xE8, "ADD", self.add),
+            Opcode(0xEF, "SUB", self.sub),
             Opcode(0xEC, "SEG", self.int_to_sevenseg),
             Opcode(0xF1, "EQ",  self.conditional_eq),
             Opcode(0xF2, "LT",  self.conditional_lt),
@@ -109,6 +109,10 @@ class CPU:
             Opcode(0xF5, "NEQ", self.conditional_neq),
             Opcode(0xF6, "GTE", self.conditional_gte),
             Opcode(0xF7, "GT",  self.conditional_gt),
+            Opcode(0x98, "RLD", self.ram_load),
+            Opcode(0x99, "RSV", self.ram_save),
+            Opcode(0x9A, "RLR", self.ram_load_register),
+            Opcode(0x9B, "RSR", self.ram_save_register),
             Opcode(0x0F, "HLT", self.halt),
         ]
 
@@ -323,6 +327,26 @@ class CPU:
         if pos_to > ROM_SIZE:
             raise ValueError(f"Position {pos_to} greater than {ROM_SIZE}!")
         self.ram.save(pos_to, self.registers[reg_from])
+
+    def ram_load_register(self, reg_from, reg_to):
+        """NEQ <pos_from> <reg_to>
+        Load the value from RAM position stored in `from_reg` into register `to_reg`."""
+        logger.debug(f"RLD {reg_from} {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        if reg_from > ROM_SIZE:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        self.registers[reg_to] = self.ram.load(self.registers[reg_from])
+
+    def ram_save_register(self, reg_from, reg_to):
+        """NEQ <from_reg> <to_pos>
+        Save the value from register `from_reg` to RAM position stored in `to_reg`."""
+        logger.debug(f"RSV {reg_from} {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        if reg_from > ROM_SIZE:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        self.ram.save(self.registers[reg_to], self.registers[reg_from])
 
     def halt(self):
         self._halt_flag = True

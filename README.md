@@ -17,28 +17,33 @@ Register 10 is a data bus and sends that value to the display in register 9.
 - `ZXCVBNM,`: Hold each key to set the input value to the CPU.
 
 ## Opcodes
-|Canon Name                       |ASM|Bit 7|Bit 6|Bit 5|Bit 4|Bit 3|Bit 2|Bit 1|Bit 0|Decimal|Hex|Width|
-|---------------------------------|---|-----|-----|-----|-----|-----|-----|-----|-----|-------|---|-----|
-|No Operation                     |NOP|0    |0    |0    |0    |0    |0    |0    |0    |0      |00 |1    |
-|Immediate                        |IMM|0    |1    |0    |0    |0    |0    |0    |1    |65     |41 |2    |
-|Jump                             |JMP|0    |1    |0    |0    |0    |1    |0    |0    |68     |44 |2    |
-|Copy                             |CPY|1    |0    |0    |1    |0    |0    |0    |1    |145    |91 |3    |
-|Logical And                      |AND|1    |1    |1    |0    |0    |0    |0    |0    |224    |E0 |4    |
-|Logical Or                       |OR |1    |1    |1    |0    |0    |0    |1    |0    |226    |E2 |4    |
-|Logical Not                      |NOT|1    |0    |1    |0    |0    |0    |1    |1    |163    |A3 |3    |
-|Add                              |ADD|1    |1    |1    |0    |1    |1    |1    |1    |239    |EF |4    |
-|Subtract                         |SUB|1    |1    |1    |0    |1    |0    |0    |0    |232    |E8 |4    |
-|Modulo                           |MOD|1    |1    |1    |0    |1    |0    |0    |1    |233    |E9 |4    |
-|Int to Seven Segment             |SEG|1    |1    |1    |0    |1    |1    |0    |0    |236    |EC |4    |
-|Conditional Equals               |EQ |1    |1    |1    |1    |0    |0    |0    |1    |241    |F1 |4    |
-|Conditional Less Than            |LT |1    |1    |1    |1    |0    |0    |1    |0    |242    |F2 |4    |
-|Conditional Less Than Or Equal   |LTE|1    |1    |1    |1    |0    |0    |1    |1    |243    |F3 |4    |
-|Conditional Not Equal            |NEQ|1    |1    |1    |1    |0    |1    |0    |1    |245    |F5 |4    |
-|Conditional Greater Than Or Equal|GTE|1    |1    |1    |1    |0    |1    |1    |0    |246    |F6 |4    |
-|Conditional Greater Than         |GT |1    |1    |1    |1    |0    |1    |1    |1    |247    |F7 |4    |
-|RAM Load                         |RLD|1    |0    |0    |1    |1    |0    |0    |0    |152    |98 |3    |
-|RAM Save                         |RSV|1    |0    |0    |1    |1    |0    |0    |1    |153    |99 |3    |
-|Halt                             |HLT|0    |0    |0    |0    |1    |1    |1    |1    |15     |0F |1    |
+| Canon Name                        | ASM | Bit 7 | Bit 6 | Bit 5 | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 | Dupe Check | Decimal | Hex | Width | Type        |
+|-----------------------------------|-----|-------|-------|-------|-------|-------|-------|-------|-------|------------|---------|-----|-------|-------------|
+| No Operation                      | NOP | 0     | 0     | 0     | 0     | 0     | 0     | 0     | 0     | No         | 0       | 00  | 1     | Immediate   |
+| Immediate                         | IMM | 0     | 1     | 0     | 0     | 0     | 0     | 0     | 1     | No         | 65      | 41  | 2     | Immediate   |
+| Jump                              | JMP | 0     | 1     | 0     | 0     | 0     | 1     | 0     | 0     | No         | 68      | 44  | 2     | Immediate   |
+| Copy                              | CPY | 1     | 0     | 0     | 1     | 0     | 0     | 0     | 1     | No         | 145     | 91  | 3     | Copy        |
+| Logical And                       | AND | 1     | 1     | 1     | 0     | 0     | 0     | 0     | 0     | No         | 224     | E0  | 4     | Logic       |
+| Logical Or                        | OR  | 1     | 1     | 1     | 0     | 0     | 0     | 1     | 0     | No         | 226     | E2  | 4     | Logic       |
+| Logical Not                       | NOT | 1     | 0     | 1     | 0     | 0     | 0     | 1     | 1     | No         | 163     | A3  | 3     | Logic       |
+| Add                               | ADD | 1     | 1     | 1     | 0     | 1     | 0     | 0     | 0     | No         | 232     | E8  | 4     | Math        |
+| Subtract                          | SUB | 1     | 1     | 1     | 0     | 1     | 1     | 1     | 1     | No         | 239     | EF  | 4     | Math        |
+| Modulo                            | MOD | 1     | 1     | 1     | 0     | 1     | 0     | 0     | 1     | No         | 233     | E9  | 4     | Math        |
+| Int to Seven Segment              | SEG | 1     | 1     | 1     | 0     | 1     | 1     | 0     | 0     | No         | 236     | EC  | 4     | Math        |
+| Conditional Equals                | EQ  | 1     | 1     | 1     | 1     | 0     | 0     | 0     | 1     | No         | 241     | F1  | 4     | Conditional |
+| Conditional Less Than             | LT  | 1     | 1     | 1     | 1     | 0     | 0     | 1     | 0     | No         | 242     | F2  | 4     | Conditional |
+| Conditional Less Than Or Equal    | LTE | 1     | 1     | 1     | 1     | 0     | 0     | 1     | 1     | No         | 243     | F3  | 4     | Conditional |
+| Conditional Not Equal             | NEQ | 1     | 1     | 1     | 1     | 0     | 1     | 0     | 1     | No         | 245     | F5  | 4     | Conditional |
+| Conditional Greater Than Or Equal | GTE | 1     | 1     | 1     | 1     | 0     | 1     | 1     | 0     | No         | 246     | F6  | 4     | Conditional |
+| Conditional Greater Than          | GT  | 1     | 1     | 1     | 1     | 0     | 1     | 1     | 1     | No         | 247     | F7  | 4     | Conditional |
+| RAM Load                          | RLD | 1     | 0     | 0     | 1     | 1     | 0     | 0     | 0     | No         | 152     | 98  | 3     | RAM         |
+| RAM Save                          | RSV | 1     | 0     | 0     | 1     | 1     | 0     | 0     | 1     | No         | 153     | 99  | 3     | RAM         |
+| RAM Load from Register            | RLR | 1     | 0     | 0     | 1     | 1     | 0     | 1     | 0     | No         | 154     | 9A  | 3     | RAM         |
+| RAM Save from Register            | RSR | 1     | 0     | 0     | 1     | 1     | 0     | 1     | 1     | No         | 155     | 9B  | 3     | RAM         |
+| Push                              | PSH | 1     | 0     | 0     | 1     | 1     | 1     | 0     | 0     | No         | 156     | 9C  | 3     | RAM         |
+| Pop                               | POP | 1     | 0     | 0     | 1     | 1     | 1     | 0     | 1     | No         | 157     | 9D  | 3     | RAM         |
+| Halt                              | HLT | 0     | 0     | 0     | 0     | 1     | 1     | 1     | 1     | No         | 15      | 0F  | 1     | Immediate   |
+| Return                            | RET | 0     | 0     | 0     | 0     | 1     | 0     | 0     | 0     | No         | 8       | 08  | 1     | Immediate   |
 
 
 ### Some Notes About Opcodes

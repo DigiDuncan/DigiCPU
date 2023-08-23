@@ -4,7 +4,7 @@ class RAM:
         self.state = [0] * size
 
     def load(self, pos: int) -> int:
-        return self.state[pos]
+        return self.state[pos % self.size]
 
     def save(self, pos: int, data: int):
-        self.state[pos] = data
+        self.state[pos % self.size] = data
