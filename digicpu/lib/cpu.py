@@ -358,17 +358,17 @@ class CPU:
         logger.debug(f"PSH {reg_from}")
         if reg_from > MAX_REG:
             raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
-        self.ram.save(self.registers[Registers.STACK])
+        self.ram.save(self.registers[Registers.STACK], self.registers[reg_from])
         self.registers[Registers.STACK] += 1
         self.registers[Registers.STACK] %= STACK_SIZE
 
-    def pop(self, reg_ro):
+    def pop(self, reg_to):
         """POP <reg_from>
         Pop the value from from the stack into register `reg_to`."""
-        logger.debug(f"PSH {reg_ro}")
-        if reg_ro > MAX_REG:
-            raise ValueError(f"Register {reg_ro} greater than {MAX_REG}!")
-        self.registers[reg_ro] = self.ram.load(self.registers[Registers.STACK])
+        logger.debug(f"PSH {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        self.registers[reg_to] = self.ram.load(self.registers[Registers.STACK])
         self.registers[Registers.STACK] -= 1
         self.registers[Registers.STACK] %= STACK_SIZE
 
