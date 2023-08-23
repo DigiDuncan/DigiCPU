@@ -142,7 +142,7 @@ class GameWindow(arcade.Window):
         if self.tick % self.tick_multiplier == 0:
             self.cpu.input_register = self.input_value
 
-            if self.cpu.program_counter < 254:  # Should this be 255...?
+            if self.cpu.program_counter <= 255:
                 self.cpu.step()
 
             # "Wiring"
