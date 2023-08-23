@@ -4,7 +4,7 @@ import importlib.resources as pkg_resources
 import logging
 
 import digicpu.data
-from digicpu.lib.cpu import CPU
+from digicpu.lib.cpu import CPU, STACK_SIZE, Registers
 from digicpu.lib.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
 
@@ -171,9 +171,12 @@ class GameWindow(arcade.Window):
             for j in range(WIDTH):
                 x = start_x + (j * SQUARE_SIZE)
                 y = start_y - (i * SQUARE_SIZE)
-                c = self.cpu.ram.load(i * WIDTH + j)
-                color = (c, c, c, 255)
+                k = i * WIDTH + j
+                c = self.cpu.ram.load(k)
+                color = (0, 0, c, 255) if k < STACK_SIZE else (c, c, c, 255)
                 arcade.draw_lrtb_rectangle_filled(x, x + SQUARE_SIZE, y, y - SQUARE_SIZE, color)
+                if k == self.cpu.registers[Registers.STACK]:
+                    arcade.draw_lrtb_rectangle_filled(x + (SQUARE_SIZE / 4), x + (SQUARE_SIZE / 4 * 3), y - (SQUARE_SIZE / 4), y - (SQUARE_SIZE / 4 * 3), (255, 0, 0, 255))
 
     def on_draw(self):
         arcade.start_render()

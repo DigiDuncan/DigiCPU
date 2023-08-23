@@ -19,11 +19,12 @@ try:
 except ImportError:
     pass
 
-Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 ROM_SIZE = 256
 RAM_SIZE = 256
+STACK_SIZE = 16
 MAX_INT = 256
-MAX_REG = 10
+MAX_REG = 11
 
 
 class Opcode:
@@ -49,6 +50,7 @@ class Registers:
     IN = 8
     ADDR = 9
     DATA = 10
+    STACK = 11
 
 
 def make_int(i: str | int) -> int:
@@ -88,7 +90,7 @@ class CPU:
     """A high-level implemenation of a CPU's functionality."""
     def __init__(self):
         self.program_counter: int = 0
-        self.registers: list[int] = [0] * 11
+        self.registers: list[int] = [0] * (MAX_REG + 1)
         self.rom: list[int] = [0] * ROM_SIZE
         self.ram: RAM = RAM(RAM_SIZE)
 
@@ -113,6 +115,8 @@ class CPU:
             Opcode(0x99, "RSV", self.ram_save),
             Opcode(0x9A, "RLR", self.ram_load_register),
             Opcode(0x9B, "RSR", self.ram_save_register),
+            Opcode(0x5C, "PSH", self.push),
+            Opcode(0x5D, "POP", self.pop),
             Opcode(0x0F, "HLT", self.halt),
         ]
 
@@ -309,8 +313,8 @@ class CPU:
                 self.registers[reg_to] = 0
 
     def ram_load(self, pos_from, reg_to):
-        """NEQ <pos_from> <reg_to>
-        Load the value from position `from_pos` in RAM into register `to_reg`."""
+        """RLD <pos_from> <reg_to>
+        Load the value from position `pos_from` in RAM into register `reg_to`."""
         logger.debug(f"RLD {pos_from} {reg_to}")
         if reg_to > MAX_REG:
             raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
@@ -319,8 +323,8 @@ class CPU:
         self.registers[reg_to] = self.ram.load(pos_from)
 
     def ram_save(self, reg_from, pos_to):
-        """NEQ <from_reg> <to_pos>
-        Save the value from register `from_reg` to RAM position `to_pos`."""
+        """RSV <reg_from> <pos_to>
+        Save the value from register `reg_from` to RAM position `pos_to`."""
         logger.debug(f"RSV {reg_from} {pos_to}")
         if reg_from > MAX_REG:
             raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
@@ -329,24 +333,44 @@ class CPU:
         self.ram.save(pos_to, self.registers[reg_from])
 
     def ram_load_register(self, reg_from, reg_to):
-        """NEQ <pos_from> <reg_to>
-        Load the value from RAM position stored in `from_reg` into register `to_reg`."""
+        """RLR <reg_from> <reg_to>
+        Load the value from RAM position stored in `reg_from` into register `reg_to`."""
         logger.debug(f"RLD {reg_from} {reg_to}")
         if reg_to > MAX_REG:
             raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
-        if reg_from > ROM_SIZE:
+        if reg_from > MAX_REG:
             raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
         self.registers[reg_to] = self.ram.load(self.registers[reg_from])
 
     def ram_save_register(self, reg_from, reg_to):
-        """NEQ <from_reg> <to_pos>
-        Save the value from register `from_reg` to RAM position stored in `to_reg`."""
+        """RSR <reg_from> <reg_to>
+        Save the value from register `reg_from` to RAM position stored in `reg_to`."""
         logger.debug(f"RSV {reg_from} {reg_to}")
         if reg_to > MAX_REG:
             raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
-        if reg_from > ROM_SIZE:
+        if reg_from > MAX_REG:
             raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
         self.ram.save(self.registers[reg_to], self.registers[reg_from])
+
+    def push(self, reg_from):
+        """PSH <reg_from>
+        Push the value from `reg_from` to the stack."""
+        logger.debug(f"PSH {reg_from}")
+        if reg_from > MAX_REG:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        self.ram.save(self.registers[Registers.STACK])
+        self.registers[Registers.STACK] += 1
+        self.registers[Registers.STACK] %= STACK_SIZE
+
+    def pop(self, reg_ro):
+        """POP <reg_from>
+        Pop the value from from the stack into register `reg_to`."""
+        logger.debug(f"PSH {reg_ro}")
+        if reg_ro > MAX_REG:
+            raise ValueError(f"Register {reg_ro} greater than {MAX_REG}!")
+        self.registers[reg_ro] = self.ram.load(self.registers[Registers.STACK])
+        self.registers[Registers.STACK] -= 1
+        self.registers[Registers.STACK] %= STACK_SIZE
 
     def halt(self):
         self._halt_flag = True
