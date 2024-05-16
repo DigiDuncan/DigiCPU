@@ -1,0 +1,14 @@
+# RAM Filler
+# 
+# by DigiDuncan
+IMM 1
+CPY 0 1
+CPY 0 2
+CPY 0 3
+LABEL LOOP
+RSR 1 2
+ADD 1 2 1
+SUB 1 2 2
+PSH 3
+ADD 3 0 3
+JMP LOOP

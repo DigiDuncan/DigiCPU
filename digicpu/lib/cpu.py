@@ -1,8 +1,10 @@
 import re
-from typing import Literal
+from typing import Literal, Optional
 
 # LOGGING STUFF
 import logging
+
+from digicpu.lib.ram import RAM
 
 logger = logging.getLogger("digicpu")
 logging.basicConfig(level=logging.INFO)
@@ -17,52 +19,39 @@ try:
 except ImportError:
     pass
 
-Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 ROM_SIZE = 256
+RAM_SIZE = 256
+STACK_SIZE = 16
 MAX_INT = 256
-MAX_REG = 10
+MAX_REG = 11
 
-class Opcodes:
-    NOP = 0x00
-    IMM = 0x01
-    JMP = 0x04
-    CPY = 0x51
-    AND = 0xA0
-    OR = 0xA2
-    NOT = 0x63
-    ADD = 0xAF
-    SUB = 0xA8
-    SEG = 0x6C
-    EQ = 0xB1
-    LT = 0xB2
-    LTE = 0xB3
-    NEQ = 0xB5
-    GTE = 0xB6
-    GT = 0xB7
-    HLT = 0x0F
+
+class Opcode:
+    def __init__(self, value: int, assembly: str, func: Optional[callable] = None):
+        self.value = value
+        self.assembly = assembly
+        self.function = func
+
+    @property
+    def width(self) -> int:
+        # Instruction size is encoded with the first 2 bits of the opcode.
+        return ((self.value & 0b11000000) >> 6) + 1
+
+    def run(self, args: list[int]) -> None:
+        if not self.function:
+            return
+        args = args[:self.width - 1]
+        self.function(*args)
+
+
+class Registers:
+    IMR = 0
     IN = 8
     ADDR = 9
     DATA = 10
+    STACK = 11
 
-widths = {
-    "NOP" : 1,
-    "IMM" : 2,
-    "JMP" : 2,
-    "CPY" : 3,
-    "AND" : 4,
-    "OR " : 4,
-    "NOT" : 3,
-    "ADD" : 4,
-    "SUB" : 4,
-    "SEG" : 4,
-    "EQ"  : 4,
-    "LT"  : 4,
-    "LTE" : 4,
-    "NEQ" : 4,
-    "GTE" : 4,
-    "GT"  : 4,
-    "HLT" : 1
-}
 
 def make_int(i: str | int) -> int:
     if isinstance(i, int):
@@ -76,6 +65,7 @@ def make_int(i: str | int) -> int:
     else:
         return int(i)
 
+
 def check_arithmetic(reg_1, reg_2, reg_to):
     """Sanity checks for arthimatic functions."""
     if reg_1 > MAX_REG:
@@ -84,7 +74,8 @@ def check_arithmetic(reg_1, reg_2, reg_to):
         raise ValueError(f"Register {reg_2} greater than {MAX_REG}!")
     if reg_to > MAX_REG:
         raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
-    
+
+
 def check_logic(reg_1, reg_2, jump):
     """Sanity checks for logical functions."""
     if reg_1 > MAX_REG:
@@ -94,12 +85,40 @@ def check_logic(reg_1, reg_2, jump):
     if jump > ROM_SIZE:
         raise ValueError(f"Jump point {jump} greater than ROM size {ROM_SIZE}!")
 
+
 class CPU:
     """A high-level implemenation of a CPU's functionality."""
     def __init__(self):
         self.program_counter: int = 0
-        self.registers: list[int] = [0] * 11
+        self.registers: list[int] = [0] * (MAX_REG + 1)
         self.rom: list[int] = [0] * ROM_SIZE
+        self.ram: RAM = RAM(RAM_SIZE)
+
+        self.opcodes = [
+            Opcode(0x00, "NOP"),
+            Opcode(0x41, "IMM", self.immediate),
+            Opcode(0x44, "JMP", self.jump),
+            Opcode(0x91, "CPY", self.copy),
+            Opcode(0xE0, "AND", self.logical_and),
+            Opcode(0xE2, "OR",  self.logical_or),
+            Opcode(0xA3, "NOT", self.logical_not),
+            Opcode(0xE8, "ADD", self.add),
+            Opcode(0xEF, "SUB", self.sub),
+            Opcode(0xEC, "SEG", self.int_to_sevenseg),
+            Opcode(0xF1, "EQ",  self.conditional_eq),
+            Opcode(0xF2, "LT",  self.conditional_lt),
+            Opcode(0xF3, "LTE", self.conditional_lte),
+            Opcode(0xF5, "NEQ", self.conditional_neq),
+            Opcode(0xF6, "GTE", self.conditional_gte),
+            Opcode(0xF7, "GT",  self.conditional_gt),
+            Opcode(0x98, "RLD", self.ram_load),
+            Opcode(0x99, "RSV", self.ram_save),
+            Opcode(0x9A, "RLR", self.ram_load_register),
+            Opcode(0x9B, "RSR", self.ram_save_register),
+            Opcode(0x5C, "PSH", self.push),
+            Opcode(0x5D, "POP", self.pop),
+            Opcode(0x0F, "HLT", self.halt),
+        ]
 
         self._just_jumped = False
         self._last_instruction_size = 0
@@ -108,17 +127,21 @@ class CPU:
         self._current_instruction = ""
 
     @property
+    def valid_opcodes(self) -> list[str]:
+        return [o.assembly for o in self.opcodes]
+
+    @property
     def input_register(self) -> int:
         return self.registers[8]
-    
+
     @input_register.setter
     def input_register(self, v):
         self.registers[8] = v
-    
+
     @property
     def address_register(self) -> int:
         return self.registers[9]
-    
+
     @address_register.setter
     def address_register(self, v):
         self.registers[9] = v
@@ -126,7 +149,7 @@ class CPU:
     @property
     def data_register(self) -> int:
         return self.registers[10]
-    
+
     @data_register.setter
     def data_register(self, v):
         self.registers[10] = v
@@ -148,8 +171,8 @@ class CPU:
         logger.debug(f"IMM {value}")
         if value >= MAX_INT:
             raise ValueError(f"Immediate value {value} higher than {MAX_INT}!")
-        self.registers[0] = value
-    
+        self.registers[Registers.IMR] = value
+
     def jump(self, position: int):
         """JMP <position>
         Jump to position `position` in ROM."""
@@ -201,7 +224,7 @@ class CPU:
         check_logic(reg_1, reg_2, jump)
         if self.registers[reg_1] == self.registers[reg_2]:
             self.jump(jump)
-    
+
     def conditional_neq(self, reg_1, reg_2, jump):
         """NEQ <A> <B> <jump>
         If the value in register A doesn't equal the value in register B, jump to position `jump`."""
@@ -289,73 +312,95 @@ class CPU:
             case 88 | 120:
                 self.registers[reg_to] = 0
 
+    def ram_load(self, pos_from, reg_to):
+        """RLD <pos_from> <reg_to>
+        Load the value from position `pos_from` in RAM into register `reg_to`."""
+        logger.debug(f"RLD {pos_from} {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        if pos_from > ROM_SIZE:
+            raise ValueError(f"Position {pos_from} greater than {ROM_SIZE}!")
+        self.registers[reg_to] = self.ram.load(pos_from)
+
+    def ram_save(self, reg_from, pos_to):
+        """RSV <reg_from> <pos_to>
+        Save the value from register `reg_from` to RAM position `pos_to`."""
+        logger.debug(f"RSV {reg_from} {pos_to}")
+        if reg_from > MAX_REG:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        if pos_to > ROM_SIZE:
+            raise ValueError(f"Position {pos_to} greater than {ROM_SIZE}!")
+        self.ram.save(pos_to, self.registers[reg_from])
+
+    def ram_load_register(self, reg_from, reg_to):
+        """RLR <reg_from> <reg_to>
+        Load the value from RAM position stored in `reg_from` into register `reg_to`."""
+        logger.debug(f"RLD {reg_from} {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        if reg_from > MAX_REG:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        self.registers[reg_to] = self.ram.load(self.registers[reg_from])
+
+    def ram_save_register(self, reg_from, reg_to):
+        """RSR <reg_from> <reg_to>
+        Save the value from register `reg_from` to RAM position stored in `reg_to`."""
+        logger.debug(f"RSV {reg_from} {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        if reg_from > MAX_REG:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        self.ram.save(self.registers[reg_to], self.registers[reg_from])
+
+    def push(self, reg_from):
+        """PSH <reg_from>
+        Push the value from `reg_from` to the stack."""
+        logger.debug(f"PSH {reg_from}")
+        if reg_from > MAX_REG:
+            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+        self.ram.save(self.registers[Registers.STACK], self.registers[reg_from])
+        self.registers[Registers.STACK] += 1
+        self.registers[Registers.STACK] %= STACK_SIZE
+
+    def pop(self, reg_to):
+        """POP <reg_from>
+        Pop the value from from the stack into register `reg_to`."""
+        logger.debug(f"PSH {reg_to}")
+        if reg_to > MAX_REG:
+            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        self.registers[reg_to] = self.ram.load(self.registers[Registers.STACK])
+        self.registers[Registers.STACK] -= 1
+        self.registers[Registers.STACK] %= STACK_SIZE
+
     def halt(self):
         self._halt_flag = True
 
     def step(self):
         """Run one clock cycle. Just keep doing this until we're out of ROM."""
+        # If we're halted, we're... halted.
         if self._halt_flag:
             return
+
+        # Get the current instruction and process it.
         current_ins = self.rom[self.program_counter]
+        # This is needed because we're genericizing here and we need no not get IndexErrors.
         extended_rom = self.rom + [0, 0, 0, 0]
-        o1, o2, o3, o4 = extended_rom[self.program_counter + 1:self.program_counter + 5]
-        match current_ins:
-            case Opcodes.NOP:
-                self._current_instruction = "NOP"
-            case Opcodes.IMM:
-                self._current_instruction = f"IMM {o1}"
-                self.immediate(o1)
-            case Opcodes.JMP:
-                self._current_instruction = f"JMP {o1}"
-                self.jump(o1)
-            case Opcodes.CPY:
-                self._current_instruction = f"CPY {o1} {o2}"
-                self.copy(o1, o2)
-            case Opcodes.ADD:
-                self._current_instruction = f"ADD {o1} {o2} {o3}"
-                self.add(o1, o2, o3)
-            case Opcodes.SUB:
-                self._current_instruction = f"SUB {o1} {o2} {o3}"
-                self.sub(o1, o2, o3)
-            case Opcodes.AND:
-                self._current_instruction = f"AND {o1} {o2} {o3}"
-                self.add(o1, o2, o3)
-            case Opcodes.OR:
-                self._current_instruction = f"OR {o1} {o2} {o3}"
-                self.logical_or(o1, o2, o3)
-            case Opcodes.NOT:
-                self._current_instruction = f"NOT {o1} {o2}"
-                self.logical_not(o1, o2)
-            case Opcodes.EQ:
-                self._current_instruction = f"EQ {o1} {o2} {o3}"
-                self.conditional_eq(o1, o2, o3)
-            case Opcodes.LT:
-                self._current_instruction = f"LT {o1} {o2} {o3}"
-                self.conditional_lt(o1, o2, o3)
-            case Opcodes.LTE:
-                self._current_instruction = f"LTE {o1} {o2} {o3}"
-                self.conditional_lte(o1, o2, o3)
-            case Opcodes.NEQ:
-                self._current_instruction = f"NEQ {o1} {o2} {o3}"
-                self.conditional_neq(o1, o2, o3)
-            case Opcodes.GTE:
-                self._current_instruction = f"GTE {o1} {o2} {o3}"
-                self.conditional_gte(o1, o2, o3)
-            case Opcodes.GT:
-                self._current_instruction = f"GT {o1} {o2} {o3}"
-                self.conditional_gt(o1, o2, o3)
-            case Opcodes.SEG:
-                self._current_instruction = f"SEG {o1} {o2} {o3}"
-                self.int_to_sevenseg(o1, o2)
-            case Opcodes.HLT:
-                self._current_instruction = "HLT"
-                self.halt()
-            case _:
-                raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
-            
-        self._last_instruction_size = (current_ins & 0b11000000) >> 6
+        # Get the next few values in case they're operands.
+        operands = extended_rom[self.program_counter + 1:self.program_counter + 5]
+        found = False
+        for o in self.opcodes:
+            if o.value != current_ins:
+                continue
+            found = True
+            o.run(operands)
+            self._last_instruction_size = o.width
+            self._current_instruction = f"{o.assembly} {' '.join(str(o) for o in operands[:o.width -1])}"
+        if not found:
+            raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
+
+        # If we just jumped, we don't need to increment the program counter.
         if not self._just_jumped:
-            self.program_counter += (self._last_instruction_size + 2)
+            self.program_counter += self._last_instruction_size
         self._just_jumped = False
 
     def load(self, rom: list[int]):
@@ -368,108 +413,81 @@ class CPU:
         """Load an assembly program from string."""
         s = re.sub(r"#(.*)\n", "", s)  # comments
 
+        # Deal with constants. It's not really an opcode, so it's not coded like one.
         replacements = {}
         constants: list[str] = re.findall(r"CONST (.+ .+)\n", s)
         for constant in constants:
             split = constant.split(maxsplit = 1)
             replacements[split[0]] = split[1]
 
+        # Replace everything we determined needs to be, e.g.: constants.
         for key, value in replacements.items():
             s = s.replace(key, value)
 
+        # Make sure everything's uppercase, since we assume that a lot.
         s = s.upper()
 
+        # Store labels for later.
         labels = {}
         lines = s.split("\n")
         n = 0
         for line in lines:
             line = line.strip()
+            # If we find a label definition, save it.
             if m := re.match(r"LABEL (.*)", line):
                 labels[m.group(1)] = n
             else:
-                for ins, w in widths.items():
-                    if line.startswith(ins):
-                        n += w
+                # Step over opcodes, since we know how wide they are.
+                for o in self.opcodes:
+                    if line.startswith(o.assembly):
+                        n += o.width
                         break
 
+        # Replace all labels with nothing, since we dealt with them.
         s = re.sub(r"LABEL (.*)\n", "", s)
 
+        # No newlines.
         s = s.replace("\n", " ")
+
+        # Split the instructions by spaces and clean then up.
         instructions = s.split()
         instructions = [i.strip().upper() for i in instructions]
+
+        # Step through these instructions.
         for n, i in enumerate(instructions):
             match i:
-                case "NOP":
-                    instructions[n] = Opcodes.NOP
+                # Is a valid Opcode.
+                case x if x in self.valid_opcodes:
+                    opcode = next(o for o in self.opcodes if o.assembly == x)
+                    instructions[n] = opcode.value
                     continue
-                case "IMM":
-                    instructions[n] = Opcodes.IMM
-                    continue
-                case "JMP":
-                    instructions[n] = Opcodes.JMP
-                    continue
-                case "CPY":
-                    instructions[n] = Opcodes.CPY
-                    continue
-                case "ADD":
-                    instructions[n] = Opcodes.ADD
-                    continue
-                case "SUB":
-                    instructions[n] = Opcodes.SUB
-                    continue
-                case "AND":
-                    instructions[n] = Opcodes.AND
-                    continue
-                case "OR":
-                    instructions[n] = Opcodes.OR
-                    continue
-                case "NOT":
-                    instructions[n] = Opcodes.NOT
-                    continue
-                case "EQ":
-                    instructions[n] = Opcodes.EQ
-                    continue
-                case "LT":
-                    instructions[n] = Opcodes.LT
-                    continue
-                case "LTE":
-                    instructions[n] = Opcodes.LTE
-                    continue
-                case "NEQ":
-                    instructions[n] = Opcodes.NEQ
-                    continue
-                case "GTE":
-                    instructions[n] = Opcodes.GTE
-                    continue
-                case "GT":
-                    instructions[n] = Opcodes.GT
-                    continue
-                case "SEG":
-                    instructions[n] = Opcodes.SEG
-                    continue
-                case "HLT":
-                    instructions[n] = Opcodes.HLT
+                # Register aliases
+                case "IMR":
+                    instructions[n] = Registers.IMR
                     continue
                 case "IN":
-                    instructions[n] = Opcodes.IN
+                    instructions[n] = Registers.IN
                     continue
                 case "ADDR":
-                    instructions[n] = Opcodes.ADDR
+                    instructions[n] = Registers.ADDR
                     continue
                 case "DATA":
-                    instructions[n] = Opcodes.DATA
+                    instructions[n] = Registers.DATA
                     continue
+                # Otherwise, is this a label?
                 case x:
                     if x in labels:
                         instructions[n] = make_int(labels[x])
                         continue
 
+            # Otherwise it's just a number I guess.
             instructions[n] = make_int(i)
 
+        # If we didn't turn something into a number, something messed up.
         for i in instructions:
             if not isinstance(i, int):
                 raise ValueError(f"Unknown instruction! {i}")
-        
+
         self.load(instructions)
 
     def reset(self):

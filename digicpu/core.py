@@ -4,7 +4,7 @@ import importlib.resources as pkg_resources
 import logging
 
 import digicpu.data
-from digicpu.lib.cpu import CPU
+from digicpu.lib.cpu import CPU, STACK_SIZE, Registers
 from digicpu.lib.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
 
@@ -56,7 +56,7 @@ class GameWindow(arcade.Window):
     def setup(self):
         self.sprite_list = arcade.SpriteList()
         self.cpu = CPU()
-        t = pkg_resources.read_text(digicpu.data, "program.asm")
+        t = pkg_resources.read_text(digicpu.data, "ramdom.asm")
         self.cpu.load_string(t)
         self.output_display = SevenSegmentDisplay()
         self.digits = []
@@ -64,9 +64,9 @@ class GameWindow(arcade.Window):
         self.fps_text = arcade.Text(f"{self.fps} FPS", 5, 5)
         self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25)
         self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45)
-        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top")
-        self.program_text = arcade.Text(f"Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
-        self.input_text = arcade.Text(f"Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top")
+        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top", font_name = "Fira Code")
+        self.program_text = arcade.Text("Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
+        self.input_text = arcade.Text("Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top")
 
         for _ in range(8):
             self.digits.append(SevenSeg(SCREEN_WIDTH // 9))
@@ -109,7 +109,6 @@ class GameWindow(arcade.Window):
         elif key == arcade.key.COMMA:
             self.input_value += 1
 
-
     def on_key_release(self, key, modifiers):
         if key == arcade.key.Z:
             self.input_value -= 128
@@ -143,7 +142,7 @@ class GameWindow(arcade.Window):
         if self.tick % self.tick_multiplier == 0:
             self.cpu.input_register = self.input_value
 
-            if self.cpu.program_counter < 254:
+            if self.cpu.program_counter <= 255:
                 self.cpu.step()
 
             # "Wiring"
@@ -161,6 +160,24 @@ class GameWindow(arcade.Window):
         self.program_text.value = f"Program Counter: {self.cpu.program_counter}"
         self.input_text.value = f"Input: {self.input_value}"
 
+    def draw_ram(self):
+        SQUARE_SIZE = 8
+        WIDTH = 16
+        HEIGHT = self.cpu.ram.size // WIDTH
+        BORDER = 4
+        start_x = SCREEN_WIDTH - (SQUARE_SIZE * WIDTH + BORDER)
+        start_y = SQUARE_SIZE * HEIGHT + BORDER
+        for i in range(HEIGHT):
+            for j in range(WIDTH):
+                x = start_x + (j * SQUARE_SIZE)
+                y = start_y - (i * SQUARE_SIZE)
+                k = i * WIDTH + j
+                c = self.cpu.ram.load(k)
+                color = (0, 0, c, 255) if k < STACK_SIZE else (c, c, c, 255)
+                arcade.draw_lrtb_rectangle_filled(x, x + SQUARE_SIZE, y, y - SQUARE_SIZE, color)
+                if k == self.cpu.registers[Registers.STACK]:
+                    arcade.draw_lrtb_rectangle_filled(x + (SQUARE_SIZE / 4), x + (SQUARE_SIZE / 4 * 3), y - (SQUARE_SIZE / 4), y - (SQUARE_SIZE / 4 * 3), (255, 0, 0, 255))
+
     def on_draw(self):
         arcade.start_render()
         self.sprite_list.draw()
@@ -170,6 +187,8 @@ class GameWindow(arcade.Window):
         self.instruction_text.draw()
         self.program_text.draw()
         self.input_text.draw()
+        self.draw_ram()
+
 
 def main():
     window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
