@@ -56,7 +56,7 @@ class GameWindow(arcade.Window):
     def setup(self):
         self.sprite_list = arcade.SpriteList()
         self.cpu = CPU()
-        t = pkg_resources.read_text(digicpu.data, "ramdom.asm")
+        t = pkg_resources.read_text(digicpu.data, "program.asm")
         self.cpu.load_string(t)
         self.output_display = SevenSegmentDisplay()
         self.digits = []
