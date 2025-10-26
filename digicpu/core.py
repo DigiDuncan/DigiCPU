@@ -12,6 +12,7 @@ logger = logging.getLogger("digicpu")
 logging.basicConfig(level=logging.INFO)
 logger.setLevel(logging.DEBUG)
 
+
 try:
     from digiformatter import logger as digilogger
     dfhandler = digilogger.DigiFormatterHandler()
@@ -165,6 +166,11 @@ class GameWindow(arcade.Window):
         WIDTH = 16
         HEIGHT = self.cpu.ram.size // WIDTH
         BORDER = 4
+
+        QUARTER_SQUARE = SQUARE_SIZE // 4
+        THREE_QUARTERS = QUARTER_SQUARE * 3
+
+        K_COLOR = (255, 0, 0, 255)
         start_x = SCREEN_WIDTH - (SQUARE_SIZE * WIDTH + BORDER)
         start_y = SQUARE_SIZE * HEIGHT + BORDER
         for i in range(HEIGHT):
@@ -174,12 +180,12 @@ class GameWindow(arcade.Window):
                 k = i * WIDTH + j
                 c = self.cpu.ram.load(k)
                 color = (0, 0, c, 255) if k < STACK_SIZE else (c, c, c, 255)
-                arcade.draw_lrtb_rectangle_filled(x, x + SQUARE_SIZE, y, y - SQUARE_SIZE, color)
+                arcade.draw_lrbt_rectangle_filled(x, x + SQUARE_SIZE, y - SQUARE_SIZE, y, color)
                 if k == self.cpu.registers[Registers.STACK]:
-                    arcade.draw_lrtb_rectangle_filled(x + (SQUARE_SIZE / 4), x + (SQUARE_SIZE / 4 * 3), y - (SQUARE_SIZE / 4), y - (SQUARE_SIZE / 4 * 3), (255, 0, 0, 255))
+                    arcade.draw_lrbt_rectangle_filled(x + QUARTER_SQUARE, x + THREE_QUARTERS, y - THREE_QUARTERS, y + QUARTER_SQUARE, K_COLOR)
 
     def on_draw(self):
-        arcade.start_render()
+        self.clear()
         self.sprite_list.draw()
         self.fps_text.draw()
         self.rate_text.draw()

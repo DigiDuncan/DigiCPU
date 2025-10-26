@@ -1,0 +1,70 @@
+[project]
+name = "digicpu"
+version = "0.1"
+readme = "README.md"
+description = "A software-based very basic CPU made in Python."
+keywords = [
+    "cpu", "assembly", "emulator"
+]
+authors = [
+    {name="DigiDuncan"}
+]
+requires-python = ">=3.14"
+dependencies = [
+    "arcade~=3.3",
+    "digiformatter~=0.5.7",
+    "arrow~=1.4"
+]
+
+classifiers=[
+        "Development Status :: 3 - Alpha",
+
+        "Intended Audience :: Developers",
+        "Operating System :: OS Independent",
+        "Topic :: Software Development",
+        "Topic :: Software Development :: Libraries",
+        "Topic :: Scientific/Engineering :: Mathematics",
+        "Typing :: Typed",
+
+        "License :: OSI Approved",
+
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.14",
+]
+[project.scripts]
+digicpu = "digicpu.core:main"
+
+[project.urls]
+Homepage = "https://github.com/DigiDuncan/DigiCPU"
+Issues = "https://github.com/DigiDuncan/DigiCPU/issues"
+Source = "https://github.com/DigiDuncan/DigiCPU"
+
+[project.optional-dependencies]
+tests = []
+
+
+
+[tool.pyright]
+include = ["better_sum", "tests/helpers"]
+exclude = [
+    ".venv*",
+    ".scratch",
+    "build",
+    "docs",
+    # The tests helpers should type correctly unless ignored, but the
+    # tests themshelpers aelves may pass incorrect types to test validation
+    "tests/unit",
+    "tests/integration"
+]
+
+[tool.setuptools.packages.find]
+include = ["digicpu", "digicpu.*"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+norecursedirs = ["docs", ".venv", "env", "dist"]
+
+
