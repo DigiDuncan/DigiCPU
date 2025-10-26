@@ -1,5 +1,6 @@
+from functools import wraps
 import re
-from typing import Literal, Optional
+from typing import Callable, Literal, Optional
 
 # LOGGING STUFF
 import logging
@@ -28,7 +29,7 @@ MAX_REG = 11
 
 
 class Opcode:
-    def __init__(self, value: int, assembly: str, func: Optional[callable] = None):
+    def __init__(self, value: int, assembly: str, func: Optional[Callable] = None):
         self.value = value
         self.assembly = assembly
         self.function = func
@@ -86,6 +87,15 @@ def check_logic(reg_1, reg_2, jump):
         raise ValueError(f"Jump point {jump} greater than ROM size {ROM_SIZE}!")
 
 
+# This is a decorator and shouldn't be invoked.
+def heavy(f: Callable) -> Callable:
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        self._busy_flag = True
+        f(self, *args, **kwargs)
+        self._busy_flag = False
+    return wrapper
+
 class CPU:
     """A high-level implemenation of a CPU's functionality."""
     def __init__(self):
@@ -123,6 +133,7 @@ class CPU:
         self._just_jumped = False
         self._last_instruction_size = 0
         self._halt_flag = False
+        self._busy_flag = False
 
         self._current_instruction = ""
 
@@ -265,6 +276,7 @@ class CPU:
         if self.registers[reg_1] <= self.registers[reg_2]:
             self.jump(jump)
 
+    @heavy
     def int_to_sevenseg(self, reg_from, reg_to):
         """SEG <from> <to>
         Convert the value in register `from` to its seven segment representation and place it in register `to`.

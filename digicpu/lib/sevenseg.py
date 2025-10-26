@@ -227,3 +227,6 @@ class SevenSeg(arcade.Sprite):
             arcade.draw_circle_filled(self._w - self.circle_size, self.circle_size // 2, self.circle_size // 2, self.segment_color(7))
         self.last_state = self.current_state
         super().update(*args, **kwargs)
+
+    def draw(self) -> None:
+        self._sprite_list.draw()
