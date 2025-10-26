@@ -34,7 +34,7 @@ SCREEN_HEIGHT = 720
 arcade.resources.load_liberation_fonts()
 
 
-class GameWindow(arcade.Window):
+class DigCPUWindow(arcade.Window):
 
 
     def __init__(self, width, height, title, fps: float = 240.0):
@@ -207,7 +207,7 @@ class GameWindow(arcade.Window):
 
 
 def main():
-    window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     window.setup()
     arcade.run()
 
