@@ -34,7 +34,7 @@ SCREEN_HEIGHT = 720
 arcade.resources.load_liberation_fonts()
 
 
-class DigCPUWindow(arcade.Window):
+class DigiCPUWindow(arcade.Window):
 
 
     def __init__(self, width, height, title, fps: float = 240.0):

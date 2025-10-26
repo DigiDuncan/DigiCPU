@@ -2,3 +2,5 @@
 digicpu/__pycache__/
 
 *.pyc
+
+digicpu.egg-info/
