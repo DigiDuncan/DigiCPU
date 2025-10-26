@@ -1,16 +1,20 @@
-import arcade
-import arrow
 import importlib.resources as pkg_resources
 import logging
+
+import arcade
+import arrow
+from pyglet.graphics import Batch
 
 import digicpu.data
 from digicpu.lib.cpu import CPU, STACK_SIZE, Registers
 from digicpu.lib.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
 
+
 logger = logging.getLogger("digicpu")
 logging.basicConfig(level=logging.INFO)
 logger.setLevel(logging.DEBUG)
+
 
 try:
     from digiformatter import logger as digilogger
@@ -21,13 +25,24 @@ try:
 except ImportError:
     pass
 
+
 SCREEN_TITLE = "DigiCPU"
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 
+# Load a fallback monospace font in case Fira Code isn't installed (Liberation Mono)
+arcade.resources.load_liberation_fonts()
 
-class GameWindow(arcade.Window):
-    def __init__(self, width, height, title):
+
+class DigCPUWindow(arcade.Window):
+
+
+    def __init__(self, width, height, title, fps: float = 240.0):
+        super().__init__(width, height, title, update_rate = 1 / fps)
+        self.fps: float = fps
+ 
+        self.instruction_font = ("Fira Code", "Liberation Mono")
+
         self.now = arrow.now()
         self.sprite_list: arcade.SpriteList = None
 
@@ -35,38 +50,38 @@ class GameWindow(arcade.Window):
         self.output_display: SevenSegmentDisplay = None
 
         self.digits: list[SevenSeg] = []
+        self.source_file: str | None = None
+        self.tick: int = 0
+        self.tick_multiplier: int = 1
 
-        self.fps = 240
-        self.tick = 0
-        self.tick_multiplier = 1
+        self.text_batch: Batch | None = None
+        self.fps_text: arcade.Text | None = None
+        self.rate_text: arcade.Text | None = None
+        self.tick_text: arcade.Text | None = None
+        self.instruction_text: arcade.Text | None = None
+        self.program_text: arcade.Text | None = None
 
-        self.fps_text: arcade.Text = None
-        self.rate_text: arcade.Text = None
-        self.tick_text: arcade.Text = None
-        self.instruction_text: arcade.Text = None
-        self.program_text: arcade.Text = None
+        self.input_value: int = 0
 
-        self.input_value = 0
-
-        self.paused = False
-
-        # Init the parent class
-        super().__init__(width, height, title, update_rate = 1 / 240)
+        self.paused: bool = False
 
     def setup(self):
+        self.text_batch = Batch()
         self.sprite_list = arcade.SpriteList()
+
         self.cpu = CPU()
         t = pkg_resources.read_text(digicpu.data, "program.asm")
         self.cpu.load_string(t)
+
         self.output_display = SevenSegmentDisplay()
         self.digits = []
 
-        self.fps_text = arcade.Text(f"{self.fps} FPS", 5, 5)
-        self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25)
-        self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45)
-        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top", font_name = "Fira Code")
-        self.program_text = arcade.Text("Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top")
-        self.input_text = arcade.Text("Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top")
+        self.fps_text = arcade.Text(f"{self.fps} FPS", 5, 5, batch=self.text_batch)
+        self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25, batch=self.text_batch)
+        self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45, batch=self.text_batch)
+        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch)
+        self.program_text = arcade.Text("Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top", batch=self.text_batch)
+        self.input_text = arcade.Text("Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top", batch=self.text_batch)
 
         for _ in range(8):
             self.digits.append(SevenSeg(SCREEN_WIDTH // 9))
@@ -165,6 +180,12 @@ class GameWindow(arcade.Window):
         WIDTH = 16
         HEIGHT = self.cpu.ram.size // WIDTH
         BORDER = 4
+
+        QUARTER_SQUARE = SQUARE_SIZE // 4
+        THREE_QUARTERS = QUARTER_SQUARE * 3
+
+        K_COLOR = (255, 0, 0, 255)
+
         start_x = SCREEN_WIDTH - (SQUARE_SIZE * WIDTH + BORDER)
         start_y = SQUARE_SIZE * HEIGHT + BORDER
         for i in range(HEIGHT):
@@ -174,23 +195,19 @@ class GameWindow(arcade.Window):
                 k = i * WIDTH + j
                 c = self.cpu.ram.load(k)
                 color = (0, 0, c, 255) if k < STACK_SIZE else (c, c, c, 255)
-                arcade.draw_lrtb_rectangle_filled(x, x + SQUARE_SIZE, y, y - SQUARE_SIZE, color)
+                arcade.draw_lrbt_rectangle_filled(x, x + SQUARE_SIZE, y - SQUARE_SIZE, y, color)
                 if k == self.cpu.registers[Registers.STACK]:
-                    arcade.draw_lrtb_rectangle_filled(x + (SQUARE_SIZE / 4), x + (SQUARE_SIZE / 4 * 3), y - (SQUARE_SIZE / 4), y - (SQUARE_SIZE / 4 * 3), (255, 0, 0, 255))
+                    arcade.draw_lrbt_rectangle_filled(x + QUARTER_SQUARE, x + THREE_QUARTERS, y - THREE_QUARTERS, y + QUARTER_SQUARE, K_COLOR)
 
     def on_draw(self):
-        arcade.start_render()
+        self.clear()
         self.sprite_list.draw()
-        self.fps_text.draw()
-        self.rate_text.draw()
-        self.tick_text.draw()
-        self.instruction_text.draw()
-        self.program_text.draw()
-        self.input_text.draw()
+        self.text_batch.draw()
         self.draw_ram()
 
 
 def main():
-    window = GameWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     window.setup()
     arcade.run()
+
