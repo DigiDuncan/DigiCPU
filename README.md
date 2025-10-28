@@ -59,7 +59,7 @@ Register 10 is a data bus and sends that value to the display in register 9.
 ## Comments
 You can write a comment by starting you line with `#`. The assembler will ignore that line.
 
-## Cosntants
+## Constants
 You can define a constant like: `CONST <NAME> <VALUE>`. ~~You totally can't make macros with this.~~
 
 ## Labels
