@@ -1,6 +1,6 @@
 from functools import wraps
 import re
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal, Optional, cast
 
 # LOGGING STUFF
 import logging
@@ -107,14 +107,14 @@ class CPU:
         self.opcodes = [
             Opcode(0x00, "NOP"),
             Opcode(0x41, "IMM", self.immediate),
-            Opcode(0x44, "JMP", self.jump),
+            Opcode(0x74, "JMP", self.jump),
             Opcode(0x91, "CPY", self.copy),
             Opcode(0xE0, "AND", self.logical_and),
             Opcode(0xE2, "OR",  self.logical_or),
             Opcode(0xA3, "NOT", self.logical_not),
             Opcode(0xE8, "ADD", self.add),
             Opcode(0xEF, "SUB", self.sub),
-            Opcode(0xEC, "SEG", self.int_to_sevenseg),
+            Opcode(0xAC, "SEG", self.int_to_sevenseg),
             Opcode(0xF1, "EQ",  self.conditional_eq),
             Opcode(0xF2, "LT",  self.conditional_lt),
             Opcode(0xF3, "LTE", self.conditional_lte),
@@ -128,6 +128,13 @@ class CPU:
             Opcode(0x5C, "PSH", self.push),
             Opcode(0x5D, "POP", self.pop),
             Opcode(0x0F, "HLT", self.halt),
+            Opcode(0x0F, "MOD", self.modulo),
+            Opcode(0xE4, "XOR", self.logical_xor),
+            Opcode(0xEA, "SHL", self.shift_left),
+            Opcode(0xEB, "SHR", self.shift_right),
+            Opcode(0xEC, "MUL", self.multiply),
+            Opcode(0xED, "MIN", self.minimum),
+            Opcode(0xEE, "MAX", self.maximum),
         ]
 
         self._just_jumped = False
@@ -207,6 +214,48 @@ class CPU:
         check_arithmetic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] - self.registers[reg_2]) % MAX_INT
 
+    def multiply(self, reg_1, reg_2, reg_to):
+        """MUL <A> <B> <to>
+        Mulitply the values from registers A and B and copy it to register `to`."""
+        logger.debug(f"MUL {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = (self.registers[reg_1] * self.registers[reg_2]) % MAX_INT
+
+    def modulo(self, reg_1, reg_2, reg_to):
+        """MOD <A> <B> <to>
+        Modulo the values from registers A and B and copy it to register `to`."""
+        logger.debug(f"MOD {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = (self.registers[reg_1] % self.registers[reg_2])
+
+    def shift_left(self, reg_1, reg_2, reg_to):
+        """SHL <A> <B> <to>
+        Shift the value in register A B amount and copy it to register `to`."""
+        logger.debug(f"SHL {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = (self.registers[reg_1] << self.registers[reg_2]) % MAX_INT
+
+    def shift_right(self, reg_1, reg_2, reg_to):
+        """SHR <A> <B> <to>
+        Shift the value in register A B amount and copy it to register `to`."""
+        logger.debug(f"SHR {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = (self.registers[reg_1] >> self.registers[reg_2]) % MAX_INT
+
+    def minimum(self, reg_1, reg_2, reg_to):
+        """MIN <A> <B> <to>
+        Choose the minimum value from registers A and B and copy it to register `to`."""
+        logger.debug(f"MIN {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = min(self.registers[reg_1], self.registers[reg_2])
+
+    def maximum(self, reg_1, reg_2, reg_to):
+        """MAX <A> <B> <to>
+        Choose the minimum value from registers A and B and copy it to register `to`."""
+        logger.debug(f"MAX {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = max(self.registers[reg_1], self.registers[reg_2])
+
     def logical_and(self, reg_1, reg_2, reg_to):
         """AND <A> <B> <to>
         Logical AND the values from registers A and B and copy it to register `to`."""
@@ -220,6 +269,13 @@ class CPU:
         logger.debug(f"OR {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] | self.registers[reg_2]) % MAX_INT
+
+    def logical_xor(self, reg_1, reg_2, reg_to):
+        """XOR <A> <B> <to>
+        Logical XOR the values from registers A and B and copy it to register `to`."""
+        logger.debug(f"XOR {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = (self.registers[reg_1] ^ self.registers[reg_2]) % MAX_INT
 
     def logical_not(self, reg, reg_to):
         """NOT <A> <to>
@@ -375,7 +431,7 @@ class CPU:
         self.registers[Registers.STACK] %= STACK_SIZE
 
     def pop(self, reg_to):
-        """POP <reg_from>
+        """POP <reg_to>
         Pop the value from from the stack into register `reg_to`."""
         logger.debug(f"PSH {reg_to}")
         if reg_to > MAX_REG:
@@ -464,6 +520,7 @@ class CPU:
         # Split the instructions by spaces and clean then up.
         instructions = s.split()
         instructions = [i.strip().upper() for i in instructions]
+        instructions = cast(list[str | int], instructions)
 
         # Step through these instructions.
         for n, i in enumerate(instructions):
@@ -500,6 +557,7 @@ class CPU:
             if not isinstance(i, int):
                 raise ValueError(f"Unknown instruction! {i}")
 
+        instructions = cast(list[int], instructions)
         self.load(instructions)
 
     def reset(self):
@@ -514,4 +572,4 @@ class CPU:
         self.input_register = value % MAX_INT
 
     def __str__(self) -> str:
-        return f"PROGRAM COUNTER: 0x{self.program_counter:X}\nREGISTERS: {[hex(v).upper() for v in self.registers[:8]]}\nINPUT: 0x{self.input_register:X} ({self.input_register})\nOUTPUT: 0x{self.output_register:X} ({self.output_register})"
+        return f"PROGRAM COUNTER: 0x{self.program_counter:X}\nREGISTERS: {[hex(v).upper() for v in self.registers[:8]]}\nINPUT: 0x{self.input_register:X} ({self.input_register})"
