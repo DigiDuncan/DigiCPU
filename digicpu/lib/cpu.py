@@ -107,14 +107,17 @@ class CPU:
         self.opcodes = [
             Opcode(0x00, "NOP"),
             Opcode(0x41, "IMM", self.immediate),
-            Opcode(0x74, "JMP", self.jump),
+            Opcode(0x64, "JMP", self.jump),
             Opcode(0x91, "CPY", self.copy),
-            Opcode(0xE0, "AND", self.logical_and),
-            Opcode(0xE2, "OR",  self.logical_or),
-            Opcode(0xA3, "NOT", self.logical_not),
+            Opcode(0xE2, "AND", self.logical_and),
+            Opcode(0xE1, "OR",  self.logical_or),
+            Opcode(0xA4, "NOT", self.logical_not),
+            Opcode(0xE5, "XOR", self.logical_xor),
+            Opcode(0xE0, "NND", self.logical_nand),
+            Opcode(0xE3, "NOR", self.logical_nor),
             Opcode(0xE8, "ADD", self.add),
-            Opcode(0xEF, "SUB", self.sub),
-            Opcode(0xAC, "SEG", self.int_to_sevenseg),
+            Opcode(0xE9, "SUB", self.sub),
+            Opcode(0xBF, "SEG", self.int_to_sevenseg),
             Opcode(0xF1, "EQ",  self.conditional_eq),
             Opcode(0xF2, "LT",  self.conditional_lt),
             Opcode(0xF3, "LTE", self.conditional_lte),
@@ -127,14 +130,13 @@ class CPU:
             Opcode(0x9B, "RSR", self.ram_save_register),
             Opcode(0x5C, "PSH", self.push),
             Opcode(0x5D, "POP", self.pop),
-            Opcode(0x0F, "HLT", self.halt),
-            Opcode(0x0F, "MOD", self.modulo),
-            Opcode(0xE4, "XOR", self.logical_xor),
-            Opcode(0xEA, "SHL", self.shift_left),
-            Opcode(0xEB, "SHR", self.shift_right),
-            Opcode(0xEC, "MUL", self.multiply),
-            Opcode(0xED, "MIN", self.minimum),
-            Opcode(0xEE, "MAX", self.maximum),
+            Opcode(0x07, "HLT", self.halt),
+            Opcode(0xEB, "MOD", self.modulo),
+            Opcode(0xEC, "SHL", self.shift_left),
+            Opcode(0xED, "SHR", self.shift_right),
+            Opcode(0xEA, "MUL", self.multiply),
+            Opcode(0xEE, "MIN", self.minimum),
+            Opcode(0xEF, "MAX", self.maximum),
         ]
 
         self._just_jumped = False
@@ -260,28 +262,42 @@ class CPU:
         """AND <A> <B> <to>
         Logical AND the values from registers A and B and copy it to register `to`."""
         logger.debug(f"AND {reg_1} {reg_2} {reg_to}")
-        check_arithmetic(reg_1, reg_2, reg_to)
+        check_logic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] & self.registers[reg_2]) % MAX_INT
 
     def logical_or(self, reg_1, reg_2, reg_to):
         """OR <A> <B> <to>
         Logical OR the values from registers A and B and copy it to register `to`."""
         logger.debug(f"OR {reg_1} {reg_2} {reg_to}")
-        check_arithmetic(reg_1, reg_2, reg_to)
+        check_logic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] | self.registers[reg_2]) % MAX_INT
+
+    def logical_nand(self, reg_1, reg_2, reg_to):
+        """NAND <A> <B> <to>
+        Logical NAND the values from registers A and B and copy it to register `to`."""
+        logger.debug(f"NND {reg_1} {reg_2} {reg_to}")
+        check_logic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = ~(self.registers[reg_1] & self.registers[reg_2]) % MAX_INT
+
+    def logical_nor(self, reg_1, reg_2, reg_to):
+        """NOR <A> <B> <to>
+        Logical NOR the values from registers A and B and copy it to register `to`."""
+        logger.debug(f"NOR {reg_1} {reg_2} {reg_to}")
+        check_logic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = ~(self.registers[reg_1] | self.registers[reg_2]) % MAX_INT
 
     def logical_xor(self, reg_1, reg_2, reg_to):
         """XOR <A> <B> <to>
         Logical XOR the values from registers A and B and copy it to register `to`."""
         logger.debug(f"XOR {reg_1} {reg_2} {reg_to}")
-        check_arithmetic(reg_1, reg_2, reg_to)
+        check_logic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] ^ self.registers[reg_2]) % MAX_INT
 
     def logical_not(self, reg, reg_to):
         """NOT <A> <to>
         Logical NOT the value from register A and copy it to register `to`."""
         logger.debug(f"NOT {reg} {reg_to}")
-        check_arithmetic(reg, 0, reg_to)  # HACK: don't want to make a seperate checking function, only 1-operand math func.
+        check_logic(reg, 0, reg_to)  # HACK: don't want to make a seperate checking function, only 1-operand math func.
         self.registers[reg_to] = (~self.registers[reg]) % MAX_INT
 
     def conditional_eq(self, reg_1, reg_2, jump):
@@ -420,6 +436,7 @@ class CPU:
             raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
         self.ram.save(self.registers[reg_to], self.registers[reg_from])
 
+    @heavy
     def push(self, reg_from):
         """PSH <reg_from>
         Push the value from `reg_from` to the stack."""
@@ -430,6 +447,7 @@ class CPU:
         self.registers[Registers.STACK] += 1
         self.registers[Registers.STACK] %= STACK_SIZE
 
+    @heavy
     def pop(self, reg_to):
         """POP <reg_to>
         Pop the value from from the stack into register `reg_to`."""
