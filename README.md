@@ -57,6 +57,7 @@ Register 11 is the stack pointer.
 ### Some Notes About Opcodes
 - The most significant two bits (7 and 6) denote the width of the instruction minus one. Since all instructions must be at least one wide, bits 7 and 6 being `00` denote the instruction being one wide, `01` means two wide, etc.
 - Bits 5, 4, and 3 denote the type of instruction:
+
 | Value | Module      |
 |-------|-------------|
 | `000` | Immediate   |
@@ -67,6 +68,7 @@ Register 11 is the stack pointer.
 | `101` | Math        |
 | `110` | Conditional |
 | `111` | Extensions  |
+
 - `NOP` is all 0s.
 - `HLT` is `0x07`.
 
