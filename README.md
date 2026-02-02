@@ -6,9 +6,9 @@ A software-based very basic 8-bit CPU made in Python.
 
 Running the module will launch an [Arcade](https://api.arcade.academy/en/development/) window with eight seven-segment displays on it.
 
-Register 9 is an address bus for the display (1-8 is each digit, left to right.)
-Register 10 is a data bus and sends that value to the display in register 9.
-Register 11 is the stack pointer.
+Register 9 is an address bus for the display (1-8 is each digit, left to right.)  
+Register 10 is a data bus and sends that value to the display in register 9.  
+Register 11 is the stack pointer.  
 Register 12 is the overflow register.
 
 ## Controls
@@ -26,7 +26,9 @@ Register 12 is the overflow register.
 | Immediate                         | `IMM` | 0        | 1        | 0        | 0        | 0        | 0   | 0   | 1   | 65  | `41`  | 2     | Immediate   |
 | Halt                              | `HLT` | 0        | 0        | 0        | 0        | 0        | 1   | 1   | 1   | 7   | `07`  | 1     | Immediate   |
 | Copy                              | `CPY` | 1        | 0        | 0        | 1        | 0        | 0   | 0   | 1   | 145 | `91`  | 3     | Copy        |
-| Copy                              | `CLR` | 0        | 1        | 0        | 1        | 0        | 0   | 0   | 0   | 80  | `50`  | 2     | Copy        |
+| Clear                             | `CLR` | 0        | 1        | 0        | 1        | 0        | 0   | 0   | 0   | 80  | `50`  | 2     | Copy        |
+| Clear Negative Flag               | `CNF` | 0        | 0        | 0        | 1        | 0        | 0   | 0   | 0   | 16  | `10`  | 1     | Copy        |
+| Jump if Negative Flag             | `JNF` | 0        | 1        | 1        | 1        | 0        | 0   | 0   | 0   | 112 | `70`  | 2     | Conditional |
 | Conditional Equals                | `EQ`  | 1        | 1        | 1        | 1        | 0        | 0   | 0   | 1   | 241 | `F1`  | 4     | Conditional |
 | Conditional Less Than             | `LT`  | 1        | 1        | 1        | 1        | 0        | 0   | 1   | 0   | 242 | `F2`  | 4     | Conditional |
 | Conditional Less Than Or Equal    | `LTE` | 1        | 1        | 1        | 1        | 0        | 0   | 1   | 1   | 243 | `F3`  | 4     | Conditional |
