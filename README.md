@@ -11,6 +11,8 @@ Register 10 is a data bus and sends that value to the display in register 9.
 Register 11 is the stack pointer.  
 Register 12 is the overflow register.
 
+The CPU also has overflow, zero, and negative flags.
+
 ## Controls
 - `R`: Reset the CPU.
 - `[SPACE]` Pause the CPU.
@@ -27,9 +29,17 @@ Register 12 is the overflow register.
 | Halt                              | `HLT` | 0        | 0        | 0        | 0        | 0        | 1   | 1   | 1   | 7   | `07`  | 1     | Immediate   |
 | Copy                              | `CPY` | 1        | 0        | 0        | 1        | 0        | 0   | 0   | 1   | 145 | `91`  | 3     | Copy        |
 | Clear                             | `CLR` | 0        | 1        | 0        | 1        | 0        | 0   | 0   | 0   | 80  | `50`  | 2     | Copy        |
-| Clear Negative Flag               | `CNF` | 0        | 0        | 0        | 1        | 0        | 0   | 0   | 0   | 16  | `10`  | 1     | Copy        |
-| Jump if Negative Flag             | `JNF` | 0        | 1        | 1        | 1        | 0        | 0   | 0   | 0   | 112 | `70`  | 2     | Conditional |
-| Conditional Equals                | `EQ`  | 1        | 1        | 1        | 1        | 0        | 0   | 0   | 1   | 241 | `F1`  | 4     | Conditional |
+| Clear Flags                       | `CLF` | 0        | 0        | 0        | 0        | 1        | 0   | 0   | 0   | 8   | `08`  | 1     | Flag        |
+| Clear Negative Flag               | `CNF` | 0        | 0        | 0        | 0        | 1        | 0   | 0   | 1   | 9   | `09`  | 1     | Flag        |
+| Clear Zero Flag                   | `CZF` | 0        | 0        | 0        | 0        | 1        | 0   | 1   | 0   | 10  | `0A`  | 1     | Flag        |
+| Clear Overflow Flag               | `COF` | 0        | 0        | 0        | 0        | 1        | 0   | 1   | 1   | 11  | `0B`  | 1     | Flag        |
+| Jump If Negative Flag             | `JNF` | 0        | 1        | 0        | 0        | 1        | 0   | 0   | 1   | 73  | `49`  | 2     | Flag        |
+| Jump If Not Negative Flag         | `JNN` | 0        | 1        | 0        | 0        | 1        | 1   | 0   | 1   | 77  | `4D`  | 2     | Flag        |
+| Jump If Zero Flag                 | `JZF` | 0        | 1        | 0        | 0        | 1        | 0   | 1   | 0   | 74  | `4A`  | 2     | Flag        |
+| Jump If Not Zero Flag             | `JNZ` | 0        | 1        | 0        | 0        | 1        | 1   | 1   | 0   | 78  | `4E`  | 2     | Flag        |
+| Jump If Overflow Flag             | `JOF` | 0        | 1        | 0        | 0        | 1        | 0   | 1   | 1   | 75  | `4B`  | 2     | Flag        |
+| Jump If Not Overflow Flag         | `JNO` | 0        | 1        | 0        | 0        | 1        | 1   | 1   | 1   | 79  | `4F`  | 2     | Flag        |
+| Conditional Equal                 | `EQ`  | 1        | 1        | 1        | 1        | 0        | 0   | 0   | 1   | 241 | `F1`  | 4     | Conditional |
 | Conditional Less Than             | `LT`  | 1        | 1        | 1        | 1        | 0        | 0   | 1   | 0   | 242 | `F2`  | 4     | Conditional |
 | Conditional Less Than Or Equal    | `LTE` | 1        | 1        | 1        | 1        | 0        | 0   | 1   | 1   | 243 | `F3`  | 4     | Conditional |
 | Conditional Not Equal             | `NEQ` | 1        | 1        | 1        | 1        | 0        | 1   | 0   | 1   | 245 | `F5`  | 4     | Conditional |
@@ -57,17 +67,17 @@ Register 12 is the overflow register.
 | Push                              | `PSH` | 0        | 1        | 0        | 1        | 1        | 1   | 0   | 0   | 92  | `5C`  | 2     | RAM         |
 | Pop                               | `POP` | 0        | 1        | 0        | 1        | 1        | 1   | 0   | 1   | 93  | `5D`  | 2     | RAM         |
 | Int to Seven Segment              | `SEG` | 1        | 0        | 1        | 1        | 1        | 1   | 1   | 1   | 191 | `BF`  | 3     | Extensions  |
-| Add with Overflow                 | `ADO` | 1        | 1        | 1        | 1        | 1        | 0   | 0   | 0   | 248 | `F8`  | 3     | Extensions  |
-| Multiply with Overflow            | `MLO` | 1        | 0        | 1        | 1        | 1        | 0   | 1   | 0   | 250 | `FA`  | 3     | Extensions  |
+| Add with Overflow                 | `ADO` | 1        | 1        | 1        | 1        | 1        | 0   | 0   | 0   | 248 | `F8`  | 4     | Extensions  |
+| Multiply with Overflow            | `MLO` | 1        | 1        | 1        | 1        | 1        | 0   | 1   | 0   | 250 | `FA`  | 4     | Extensions  |
 
 ### Some Notes About Opcodes
-- The most significant two bits (7 and 6) denote the width of the instruction minus one. Since all instructions must be at least one wide, bits 7 and 6 being `00` denote the instruction being one wide, `01` means two wide, etc.
+- The most significant two bits (7 and 6) denote the width of the instruction minus one. Since all instructions must be at least one wide, bits 7 and 6 being `00` denote the instruction being one wide, `01` means two wide, etc. You can also think of this as denoting 
 - Bits 5, 4, and 3 denote the type of instruction:
 
 | Value | Module      |
 |-------|-------------|
 | `000` | Immediate   |
-| `001` | *Unused*    |
+| `001` | Flag        |
 | `010` | Copy        |
 | `011` | RAM         |
 | `100` | Logic       |
@@ -85,7 +95,7 @@ You can write a comment by starting your line with `#`. The assembler will ignor
 You can define a constant like: `CONST <NAME> <VALUE>`. ~~You totally can't make macros with this.~~
 
 ## Labels
-You can define a label with `LABEL <NAME>`, and then jump to it with `JMP <NAME>`.
+You can define a label with `LABEL <NAME>`, and then jump to it with `JMP <NAME>` (or any other jumping operation).
 
 ## Register Aliases
 You can use the keywords `IMR`, `IN`, `ADDR`, `DATA`, `STACK`, and `OF` to reference the registers 0, 8, 9, 10, 11, and 12 respectively.

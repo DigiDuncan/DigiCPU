@@ -104,39 +104,48 @@ class CPU:
         self.opcodes = [
             Opcode(0x00, "NOP"),
             Opcode(0x41, "IMM", self.immediate),
-            Opcode(0x64, "JMP", self.jump),
+            Opcode(0x07, "HLT", self.halt),
             Opcode(0x91, "CPY", self.copy),
             Opcode(0x50, "CLR", self.clear),
-            Opcode(0x10, "CNF", self.clear_negative_flag),
-            Opcode(0x70, "JNF", self.jump_if_negative_flag),
-            Opcode(0xE2, "AND", self.logical_and),
-            Opcode(0xE1, "OR",  self.logical_or),
-            Opcode(0xA4, "NOT", self.logical_not),
-            Opcode(0xE5, "XOR", self.logical_xor),
-            Opcode(0xE0, "NND", self.logical_nand),
-            Opcode(0xE3, "NOR", self.logical_nor),
-            Opcode(0xE8, "ADD", self.add),
-            Opcode(0xE9, "SUB", self.sub),
-            Opcode(0xBF, "SEG", self.int_to_sevenseg),
+            Opcode(0x10, "RST", self.reset_state),
+            Opcode(0x08, "CLF", self.clear_flags),
+            Opcode(0x09, "CNF", self.clear_negative_flag),
+            Opcode(0x0A, "CZF", self.clear_zero_flag),
+            Opcode(0x0B, "COF", self.clear_overflow_flag),
+            Opcode(0x49, "JNF", self.jump_if_negative_flag),
+            Opcode(0x49, "JNN", self.jump_if_not_negative_flag),
+            Opcode(0x4A, "JZF", self.jump_if_zero_flag),
+            Opcode(0x4E, "JNZ", self.jump_if_not_zero_flag),
+            Opcode(0x4B, "JOF", self.jump_if_overflow_flag),
+            Opcode(0x4F, "JNO", self.jump_if_not_overflow_flag),
             Opcode(0xF1, "EQ",  self.conditional_eq),
             Opcode(0xF2, "LT",  self.conditional_lt),
             Opcode(0xF3, "LTE", self.conditional_lte),
             Opcode(0xF5, "NEQ", self.conditional_neq),
             Opcode(0xF6, "GTE", self.conditional_gte),
             Opcode(0xF7, "GT",  self.conditional_gt),
+            Opcode(0xE0, "NND", self.logical_nand),
+            Opcode(0xE1, "OR",  self.logical_or),
+            Opcode(0xE2, "AND", self.logical_and),
+            Opcode(0xE3, "NOR", self.logical_nor),
+            Opcode(0xA4, "NOT", self.logical_not),
+            Opcode(0xE5, "XOR", self.logical_xor),
+            Opcode(0x64, "JMP", self.jump),
+            Opcode(0xE8, "ADD", self.add),
+            Opcode(0xE9, "SUB", self.sub),
+            Opcode(0xEA, "MUL", self.multiply),
+            Opcode(0xEB, "MOD", self.modulo),
+            Opcode(0xEC, "SHL", self.shift_left),
+            Opcode(0xED, "SHR", self.shift_right),
+            Opcode(0xEE, "MIN", self.minimum),
+            Opcode(0xEF, "MAX", self.maximum),
             Opcode(0x98, "RLD", self.ram_load),
             Opcode(0x99, "RSV", self.ram_save),
             Opcode(0x9A, "RLR", self.ram_load_register),
             Opcode(0x9B, "RSR", self.ram_save_register),
             Opcode(0x5C, "PSH", self.push),
             Opcode(0x5D, "POP", self.pop),
-            Opcode(0x07, "HLT", self.halt),
-            Opcode(0xEB, "MOD", self.modulo),
-            Opcode(0xEC, "SHL", self.shift_left),
-            Opcode(0xED, "SHR", self.shift_right),
-            Opcode(0xEA, "MUL", self.multiply),
-            Opcode(0xEE, "MIN", self.minimum),
-            Opcode(0xEF, "MAX", self.maximum),
+            Opcode(0xBF, "SEG", self.int_to_sevenseg),
             Opcode(0xF8, "ADO", self.add_with_overflow),
             Opcode(0xFA, "MLO", self.multiply_with_overflow),
         ]
@@ -144,8 +153,12 @@ class CPU:
         self._just_jumped = False
         self._last_instruction_size = 0
         self._halt_flag = False
-        self.busy_flag = False
+
+        self.busy_flag = False  # Basically unimplemented -- some functions set it though
+
         self.negative_flag = False
+        self.zero_flag = False
+        self.overflow_flag = False
 
         self._current_instruction = ""
 
@@ -211,11 +224,96 @@ class CPU:
             raise RegisterOverflowError(reg)
         self.registers[reg] = 0
 
+    def reset_state(self):
+        """RST
+        Clear the value of all registers and flags."""
+        logger.debug("RST")
+        for v in range(len(self.registers)):
+            self.registers[v] = 0
+        self.busy_flag = False
+        self.negative_flag = False
+        self.overflow_flag = False
+        self.zero_flag = False
+
     def clear_negative_flag(self):
         """CNF
         Clear the negative flag"""
         logger.debug("CNF")
         self.negative_flag = False
+
+    def clear_zero_flag(self):
+        """CZF
+        Clear the zero flag"""
+        logger.debug("CZF")
+        self.zero_flag = False
+
+    def clear_overflow_flag(self):
+        """COF
+        Clear the overflow flag"""
+        logger.debug("COF")
+        self.overflow_flag = False
+
+    def clear_flags(self):
+        """CLF
+        Clear all flags"""
+        logger.debug("CLF")
+        self.negative_flag = False
+        self.zero_flag = False
+        self.overflow_flag = False
+
+    def jump_if_negative_flag(self, jump):
+        """JNF <jump>
+        If the negative flag is set, jump to position `jump`."""
+        logger.debug(f"JNF {jump}")
+        if jump > RAM_SIZE:
+            raise ROMOutOfBoundsError(jump)
+        if self.negative_flag:
+            self.jump(jump)
+
+    def jump_if_not_negative_flag(self, jump):
+        """JNN <jump>
+        If the negative flag is set, jump to position `jump`."""
+        logger.debug(f"JNN {jump}")
+        if jump > RAM_SIZE:
+            raise ROMOutOfBoundsError(jump)
+        if not self.negative_flag:
+            self.jump(jump)
+
+    def jump_if_zero_flag(self, jump):
+        """JZF <jump>
+        If the zero flag is set, jump to position `jump`."""
+        logger.debug(f"JZF {jump}")
+        if jump > RAM_SIZE:
+            raise ROMOutOfBoundsError(jump)
+        if self.zero_flag:
+            self.jump(jump)
+
+    def jump_if_not_zero_flag(self, jump):
+        """JNZ <jump>
+        If the zero flag is set, jump to position `jump`."""
+        logger.debug(f"JNZ {jump}")
+        if jump > RAM_SIZE:
+            raise ROMOutOfBoundsError(jump)
+        if not self.zero_flag:
+            self.jump(jump)
+
+    def jump_if_overflow_flag(self, jump):
+        """JOF <jump>
+        If the overflow flag is set, jump to position `jump`."""
+        logger.debug(f"JOF {jump}")
+        if jump > RAM_SIZE:
+            raise ROMOutOfBoundsError(jump)
+        if self.overflow_flag:
+            self.jump(jump)
+
+    def jump_if_not_overflow_flag(self, jump):
+        """JNO <jump>
+        If the overflow flag is set, jump to position `jump`."""
+        logger.debug(f"JNO {jump}")
+        if jump > RAM_SIZE:
+            raise ROMOutOfBoundsError(jump)
+        if not self.overflow_flag:
+            self.jump(jump)
 
     def immediate(self, value: int):
         """IMM <value>
@@ -237,125 +335,189 @@ class CPU:
 
     def add(self, reg_1, reg_2, reg_to):
         """ADD <A> <B> <to>
-        Add the values from registers A and B and copy it to register `to`."""
+        Add the values from registers A and B and copy it to register `to`.
+        Sets the overflow flag or zero flag.
+        """
         logger.debug(f"ADD {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] + self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] + self.registers[reg_2])
+        self.registers[reg_to] = ans % MAX_INT
+        self.overflow_flag = ans > MAX_INT
+        self.zero_flag = ans == 0
 
     def add_with_overflow(self, reg_1, reg_2, reg_to):
         """ADO <A> <B> <to>
         Add the values from registers A and B and copy it to register `to`.
         Sets the value in the OF register to the 0 if the result is less than 256, and 1 otherwise.
+        Sets the overflow flag or zero flag.
         """
         logger.debug(f"ADO {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] + self.registers[reg_2]) % MAX_INT
-        self.registers[Registers.OF] = (self.registers[reg_1] + self.registers[reg_2]) // MAX_INT
+        ans = (self.registers[reg_1] + self.registers[reg_2])
+        self.registers[reg_to] = ans % MAX_INT
+        self.registers[Registers.OF] = ans // MAX_INT
+        self.overflow_flag = ans > MAX_INT * MAX_INT
+        self.zero_flag = ans == 0
 
     def sub(self, reg_1, reg_2, reg_to):
         """SUB <A> <B> <to>
         Subtract the values from registers A and B and copy it to register `to`.
-        Might set the negative flag to true.
+        Sets the negative flag or zero flag.
         """
         logger.debug(f"SUB {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
         if self.registers[reg_2] > self.registers[reg_1]:
             self.negative_flag = True
-        self.registers[reg_to] = (self.registers[reg_1] - self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] - self.registers[reg_2])
+        self.registers[reg_to] = ans % MAX_INT
+        self.zero_flag = ans == 0
 
     def multiply(self, reg_1, reg_2, reg_to):
         """MUL <A> <B> <to>
-        Mulitply the values from registers A and B and copy it to register `to`."""
+        Mulitply the values from registers A and B and copy it to register `to`.
+        Sets the overflow flag or zero flag.
+        """
         logger.debug(f"MUL {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] * self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] * self.registers[reg_2])
+        self.registers[reg_to] = ans % MAX_INT
+        self.overflow_flag = ans > MAX_INT
+        self.zero_flag = ans == 0
 
     def multiply_with_overflow(self, reg_1, reg_2, reg_to):
         """MLO <A> <B> <to>
         Mulitply the values from registers A and B and copy it to register `to`.
         Sets the value in the OF register to the 0 if the result is less than 256, and (result // 256) otherwise.
+        Sets the overflow flag or zero flag.
         """
         logger.debug(f"MLO {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] * self.registers[reg_2]) % MAX_INT
-        self.registers[Registers.OF] = (self.registers[reg_1] * self.registers[reg_2]) // MAX_INT
+        ans = (self.registers[reg_1] * self.registers[reg_2])
+        self.registers[reg_to] = ans % MAX_INT
+        self.registers[Registers.OF] = ans // MAX_INT
+        self.overflow_flag = ans > MAX_INT * MAX_INT
+        self.zero_flag = ans == 0
 
     def modulo(self, reg_1, reg_2, reg_to):
         """MOD <A> <B> <to>
-        Modulo the values from registers A and B and copy it to register `to`."""
+        Modulo the values from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"MOD {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] % self.registers[reg_2])
+        ans = (self.registers[reg_1] % self.registers[reg_2])
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def shift_left(self, reg_1, reg_2, reg_to):
         """SHL <A> <B> <to>
-        Shift the value in register A B amount and copy it to register `to`."""
+        Shift the value in register A B amount and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"SHL {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] << self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] << self.registers[reg_2]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def shift_right(self, reg_1, reg_2, reg_to):
         """SHR <A> <B> <to>
-        Shift the value in register A B amount and copy it to register `to`."""
+        Shift the value in register A B amount and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"SHR {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] >> self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] >> self.registers[reg_2]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def minimum(self, reg_1, reg_2, reg_to):
         """MIN <A> <B> <to>
-        Choose the minimum value from registers A and B and copy it to register `to`."""
+        Choose the minimum value from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"MIN {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = min(self.registers[reg_1], self.registers[reg_2])
+        ans = min(self.registers[reg_1], self.registers[reg_2])
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def maximum(self, reg_1, reg_2, reg_to):
         """MAX <A> <B> <to>
-        Choose the minimum value from registers A and B and copy it to register `to`."""
+        Choose the minimum value from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"MAX {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = max(self.registers[reg_1], self.registers[reg_2])
+        ans = max(self.registers[reg_1], self.registers[reg_2])
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def logical_and(self, reg_1, reg_2, reg_to):
         """AND <A> <B> <to>
-        Logical AND the values from registers A and B and copy it to register `to`."""
+        Logical AND the values from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"AND {reg_1} {reg_2} {reg_to}")
         check_logic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] & self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] & self.registers[reg_2]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def logical_or(self, reg_1, reg_2, reg_to):
         """OR <A> <B> <to>
-        Logical OR the values from registers A and B and copy it to register `to`."""
+        Logical OR the values from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"OR {reg_1} {reg_2} {reg_to}")
         check_logic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] | self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] | self.registers[reg_2]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def logical_nand(self, reg_1, reg_2, reg_to):
         """NAND <A> <B> <to>
-        Logical NAND the values from registers A and B and copy it to register `to`."""
+        Logical NAND the values from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"NND {reg_1} {reg_2} {reg_to}")
         check_logic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = ~(self.registers[reg_1] & self.registers[reg_2]) % MAX_INT
+        ans = ~(self.registers[reg_1] & self.registers[reg_2]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def logical_nor(self, reg_1, reg_2, reg_to):
         """NOR <A> <B> <to>
-        Logical NOR the values from registers A and B and copy it to register `to`."""
+        Logical NOR the values from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"NOR {reg_1} {reg_2} {reg_to}")
         check_logic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = ~(self.registers[reg_1] | self.registers[reg_2]) % MAX_INT
+        ans = ~(self.registers[reg_1] | self.registers[reg_2]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def logical_xor(self, reg_1, reg_2, reg_to):
         """XOR <A> <B> <to>
-        Logical XOR the values from registers A and B and copy it to register `to`."""
+        Logical XOR the values from registers A and B and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"XOR {reg_1} {reg_2} {reg_to}")
         check_logic(reg_1, reg_2, reg_to)
-        self.registers[reg_to] = (self.registers[reg_1] ^ self.registers[reg_2]) % MAX_INT
+        ans = (self.registers[reg_1] ^ self.registers[reg_2]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def logical_not(self, reg, reg_to):
         """NOT <A> <to>
-        Logical NOT the value from register A and copy it to register `to`."""
+        Logical NOT the value from register A and copy it to register `to`.
+        Sets the zero flag.
+        """
         logger.debug(f"NOT {reg} {reg_to}")
         check_logic(reg, 0, reg_to)  # HACK: don't want to make a seperate checking function, only 1-operand math func.
-        self.registers[reg_to] = (~self.registers[reg]) % MAX_INT
+        ans = (~self.registers[reg]) % MAX_INT
+        self.registers[reg_to] = ans
+        self.zero_flag = ans == 0
 
     def conditional_eq(self, reg_1, reg_2, jump):
         """EQ <A> <B> <jump>
@@ -403,15 +565,6 @@ class CPU:
         logger.debug(f"LTE {reg_1} {reg_2} {jump}")
         check_logic(reg_1, reg_2, jump)
         if self.registers[reg_1] <= self.registers[reg_2]:
-            self.jump(jump)
-
-    def jump_if_negative_flag(self, jump):
-        """JNR <jump>
-        If the negative flag is set, jump to position `jump`."""
-        logger.debug(f"JNR {jump}")
-        if jump > RAM_SIZE:
-            raise ROMOutOfBoundsError(jump)
-        if self.negative_flag:
             self.jump(jump)
 
     @heavy
@@ -656,6 +809,10 @@ class CPU:
         self._halt_flag = False
         for v in range(len(self.registers)):
             self.registers[v] = 0
+        self.busy_flag = False
+        self.negative_flag = False
+        self.overflow_flag = False
+        self.zero_flag = False
 
     def input(self, value: int):
         """Set the input register to `value.`"""
