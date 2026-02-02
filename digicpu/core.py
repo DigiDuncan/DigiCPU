@@ -70,7 +70,7 @@ class DigiCPUWindow(arcade.Window):
         self.sprite_list = arcade.SpriteList()
 
         self.cpu = CPU()
-        t = pkg_resources.read_text(digicpu.data, "program.asm")
+        t = pkg_resources.read_text(digicpu.data, "ramdom.asm")
         self.cpu.load_string(t)
 
         self.output_display = SevenSegmentDisplay()
@@ -92,6 +92,11 @@ class DigiCPUWindow(arcade.Window):
         for n, d in enumerate(self.digits):
             d.center_y = self.height / 2
             d.left = ((d.width / 9) * (n + 1)) + (d.width * n)
+
+        self.busy_flag_text = arcade.Text("B", self.digits[0].left, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
+        self.negative_flag_text = arcade.Text("N", self.busy_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
+        self.zero_flag_text = arcade.Text("Z", self.negative_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
+        self.overflow_flag_text = arcade.Text("O", self.zero_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.R:
@@ -175,6 +180,11 @@ class DigiCPUWindow(arcade.Window):
         self.program_text.value = f"Program Counter: {self.cpu.program_counter}"
         self.input_text.value = f"Input: {self.input_value}"
 
+        self.busy_flag_text.color = arcade.color.RED if self.cpu.busy_flag else arcade.color.GRAY
+        self.negative_flag_text.color = arcade.color.RED if self.cpu.negative_flag else arcade.color.GRAY
+        self.zero_flag_text.color = arcade.color.RED if self.cpu.zero_flag else arcade.color.GRAY
+        self.overflow_flag_text.color = arcade.color.RED if self.cpu.overflow_flag else arcade.color.GRAY
+
     def draw_ram(self):
         SQUARE_SIZE = 8
         WIDTH = 16
@@ -197,7 +207,7 @@ class DigiCPUWindow(arcade.Window):
                 color = (0, 0, c, 255) if k < STACK_SIZE else (c, c, c, 255)
                 arcade.draw_lrbt_rectangle_filled(x, x + SQUARE_SIZE, y - SQUARE_SIZE, y, color)
                 if k == self.cpu.registers[Registers.STACK]:
-                    arcade.draw_lrbt_rectangle_filled(x + QUARTER_SQUARE, x + THREE_QUARTERS, y - THREE_QUARTERS, y + QUARTER_SQUARE, K_COLOR)
+                    arcade.draw_lrbt_rectangle_filled(x + QUARTER_SQUARE, x + THREE_QUARTERS, y - THREE_QUARTERS, y - QUARTER_SQUARE, K_COLOR)
 
     def on_draw(self):
         self.clear()
