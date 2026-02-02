@@ -1,11 +1,15 @@
 from functools import wraps
 import re
-from typing import Callable, Literal, Optional, cast
+from typing import Callable, Optional, cast
 
 # LOGGING STUFF
 import logging
 
+from digicpu.lib.errors import RegisterOverflowError, ROMOutOfBoundsError, IntegerOverflowError, \
+    UnknownInstructionError, UnknownOpcodeError
 from digicpu.lib.ram import RAM
+from digicpu.lib.types import MAX_INT, MAX_REG, MAX_INSTRUCTION_WIDTH, Register, \
+    ROM_SIZE, RAM_SIZE, STACK_SIZE
 
 logger = logging.getLogger("digicpu")
 logging.basicConfig(level=logging.INFO)
@@ -19,14 +23,6 @@ try:
     logger.addHandler(dfhandler)
 except ImportError:
     pass
-
-Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-ROM_SIZE = 256
-RAM_SIZE = 256
-STACK_SIZE = 16
-MAX_INT = 256
-MAX_REG = 12
-MAX_INSTRUCTION_WIDTH = 4
 
 class Opcode:
     def __init__(self, value: int, assembly: str, func: Optional[Callable] = None):
@@ -71,21 +67,21 @@ def make_int(i: str | int) -> int:
 def check_arithmetic(reg_1, reg_2, reg_to):
     """Sanity checks for arthimatic functions."""
     if reg_1 > MAX_REG:
-        raise ValueError(f"Register {reg_1} greater than {MAX_REG}!")
+        raise RegisterOverflowError(reg_1)
     if reg_2 > MAX_REG:
-        raise ValueError(f"Register {reg_2} greater than {MAX_REG}!")
+        raise RegisterOverflowError(reg_2)
     if reg_to > MAX_REG:
-        raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+        raise RegisterOverflowError(reg_to)
 
 
 def check_logic(reg_1, reg_2, jump):
     """Sanity checks for logical functions."""
     if reg_1 > MAX_REG:
-        raise ValueError(f"Register {reg_1} greater than {MAX_REG}!")
+        raise RegisterOverflowError(reg_1)
     if reg_2 > MAX_REG:
-        raise ValueError(f"Register {reg_2} greater than {MAX_REG}!")
+        raise RegisterOverflowError(reg_2)
     if jump > ROM_SIZE:
-        raise ValueError(f"Jump point {jump} greater than ROM size {ROM_SIZE}!")
+        raise ROMOutOfBoundsError(jump)
 
 
 # This is a decorator and shouldn't be invoked.
@@ -202,9 +198,9 @@ class CPU:
         Copy the value from register `from` to register `to`."""
         logger.debug(f"CPY {reg_from} {reg_to}")
         if reg_from > MAX_REG:
-            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_from)
         if reg_to > MAX_REG:
-            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_to)
         self.registers[reg_to] = self.registers[reg_from]
 
     def clear(self, reg: Register):
@@ -212,7 +208,7 @@ class CPU:
         Clear the value in register `reg`."""
         logger.debug(f"CLR {reg}")
         if reg > MAX_REG:
-            raise ValueError(f"Register {reg} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg)
         self.registers[reg] = 0
 
     def clear_negative_flag(self):
@@ -227,7 +223,7 @@ class CPU:
         Can also be in the form of 0xVAL, 0bVAL, or a single character \"V\""""
         logger.debug(f"IMM {value}")
         if value >= MAX_INT:
-            raise ValueError(f"Immediate value {value} higher than {MAX_INT}!")
+            raise IntegerOverflowError(value)
         self.registers[Registers.IMR] = value
 
     def jump(self, position: int):
@@ -235,7 +231,7 @@ class CPU:
         Jump to position `position` in ROM."""
         logger.debug(f"JMP {position}")
         if position >= ROM_SIZE:
-            raise ValueError(f"You tried to leave the ROM! ({position})")
+            raise ROMOutOfBoundsError(position)
         self.program_counter = position % ROM_SIZE
         self._just_jumped = True
 
@@ -414,7 +410,7 @@ class CPU:
         If the negative flag is set, jump to position `jump`."""
         logger.debug(f"JNR {jump}")
         if jump > RAM_SIZE:
-            raise ValueError(f"You tried to leave the ROM! ({jump})")
+            raise ROMOutOfBoundsError(jump)
         if self.negative_flag:
             self.jump(jump)
 
@@ -471,9 +467,9 @@ class CPU:
         Load the value from position `pos_from` in RAM into register `reg_to`."""
         logger.debug(f"RLD {pos_from} {reg_to}")
         if reg_to > MAX_REG:
-            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_to)
         if pos_from > ROM_SIZE:
-            raise ValueError(f"Position {pos_from} greater than {ROM_SIZE}!")
+            raise ROMOutOfBoundsError(pos_from)
         self.registers[reg_to] = self.ram.load(pos_from)
 
     def ram_save(self, reg_from, pos_to):
@@ -481,9 +477,9 @@ class CPU:
         Save the value from register `reg_from` to RAM position `pos_to`."""
         logger.debug(f"RSV {reg_from} {pos_to}")
         if reg_from > MAX_REG:
-            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_from)
         if pos_to > ROM_SIZE:
-            raise ValueError(f"Position {pos_to} greater than {ROM_SIZE}!")
+            raise ROMOutOfBoundsError(pos_to)
         self.ram.save(pos_to, self.registers[reg_from])
 
     def ram_load_register(self, reg_from, reg_to):
@@ -491,9 +487,9 @@ class CPU:
         Load the value from RAM position stored in `reg_from` into register `reg_to`."""
         logger.debug(f"RLD {reg_from} {reg_to}")
         if reg_to > MAX_REG:
-            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_to)
         if reg_from > MAX_REG:
-            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_from)
         self.registers[reg_to] = self.ram.load(self.registers[reg_from])
 
     def ram_save_register(self, reg_from, reg_to):
@@ -501,9 +497,9 @@ class CPU:
         Save the value from register `reg_from` to RAM position stored in `reg_to`."""
         logger.debug(f"RSV {reg_from} {reg_to}")
         if reg_to > MAX_REG:
-            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_to)
         if reg_from > MAX_REG:
-            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_from)
         self.ram.save(self.registers[reg_to], self.registers[reg_from])
 
     @heavy
@@ -512,7 +508,7 @@ class CPU:
         Push the value from `reg_from` to the stack."""
         logger.debug(f"PSH {reg_from}")
         if reg_from > MAX_REG:
-            raise ValueError(f"Register {reg_from} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_from)
         self.ram.save(self.registers[Registers.STACK], self.registers[reg_from])
         self.registers[Registers.STACK] += 1
         self.registers[Registers.STACK] %= STACK_SIZE
@@ -523,7 +519,7 @@ class CPU:
         Pop the value from from the stack into register `reg_to`."""
         logger.debug(f"PSH {reg_to}")
         if reg_to > MAX_REG:
-            raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
+            raise RegisterOverflowError(reg_to)
         self.registers[reg_to] = self.ram.load(self.registers[Registers.STACK])
         self.registers[Registers.STACK] -= 1
         self.registers[Registers.STACK] %= STACK_SIZE
@@ -552,7 +548,7 @@ class CPU:
             self._last_instruction_size = o.width
             self._current_instruction = f"{o.assembly} {' '.join(str(o) for o in operands[:o.width -1])}"
         if not found:
-            raise ValueError(f"Unknown opcode {current_ins} at counter {self.program_counter}")
+            raise UnknownOpcodeError(current_ins, self.program_counter)
 
         # If we just jumped, we don't need to increment the program counter.
         if not self._just_jumped:
@@ -649,7 +645,7 @@ class CPU:
         # If we didn't turn something into a number, something messed up.
         for i in instructions:
             if not isinstance(i, int):
-                raise ValueError(f"Unknown instruction! {i}")
+                raise UnknownInstructionError(i)
 
         instructions = cast(list[int], instructions)
         self.load(instructions)

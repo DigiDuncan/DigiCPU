@@ -9,6 +9,7 @@ Running the module will launch an [Arcade](https://api.arcade.academy/en/develop
 Register 9 is an address bus for the display (1-8 is each digit, left to right.)
 Register 10 is a data bus and sends that value to the display in register 9.
 Register 11 is the stack pointer.
+Register 12 is the overflow register.
 
 ## Controls
 - `R`: Reset the CPU.
