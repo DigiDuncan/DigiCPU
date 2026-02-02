@@ -20,13 +20,13 @@ try:
 except ImportError:
     pass
 
-Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 ROM_SIZE = 256
 RAM_SIZE = 256
 STACK_SIZE = 16
 MAX_INT = 256
-MAX_REG = 11
-
+MAX_REG = 12
+MAX_INSTRUCTION_WIDTH = 4
 
 class Opcode:
     def __init__(self, value: int, assembly: str, func: Optional[Callable] = None):
@@ -52,6 +52,7 @@ class Registers:
     ADDR = 9
     DATA = 10
     STACK = 11
+    OF = 12
 
 
 def make_int(i: str | int) -> int:
@@ -91,9 +92,9 @@ def check_logic(reg_1, reg_2, jump):
 def heavy(f: Callable) -> Callable:
     @wraps(f)
     def wrapper(self, *args, **kwargs):
-        self._busy_flag = True
+        self.busy_flag = True
         f(self, *args, **kwargs)
-        self._busy_flag = False
+        self.busy_flag = False
     return wrapper
 
 class CPU:
@@ -109,6 +110,9 @@ class CPU:
             Opcode(0x41, "IMM", self.immediate),
             Opcode(0x64, "JMP", self.jump),
             Opcode(0x91, "CPY", self.copy),
+            Opcode(0x50, "CLR", self.clear),
+            Opcode(0x10, "CNF", self.clear_negative_flag),
+            Opcode(0x70, "JNF", self.jump_if_negative_flag),
             Opcode(0xE2, "AND", self.logical_and),
             Opcode(0xE1, "OR",  self.logical_or),
             Opcode(0xA4, "NOT", self.logical_not),
@@ -137,12 +141,15 @@ class CPU:
             Opcode(0xEA, "MUL", self.multiply),
             Opcode(0xEE, "MIN", self.minimum),
             Opcode(0xEF, "MAX", self.maximum),
+            Opcode(0xF8, "ADO", self.add_with_overflow),
+            Opcode(0xFA, "MLO", self.multiply_with_overflow),
         ]
 
         self._just_jumped = False
         self._last_instruction_size = 0
         self._halt_flag = False
-        self._busy_flag = False
+        self.busy_flag = False
+        self.negative_flag = False
 
         self._current_instruction = ""
 
@@ -174,6 +181,22 @@ class CPU:
     def data_register(self, v):
         self.registers[10] = v
 
+    @property
+    def stack_register(self) -> int:
+        return self.registers[11]
+
+    @stack_register.setter
+    def stack_register(self, v):
+        self.registers[11] = v
+
+    @property
+    def overflow_register(self) -> int:
+        return self.registers[12]
+
+    @overflow_register.setter
+    def overflow_register(self, v):
+        self.registers[12] = v
+
     def copy(self, reg_from: Register, reg_to: Register):
         """CPY <from> <to>
         Copy the value from register `from` to register `to`."""
@@ -183,6 +206,20 @@ class CPU:
         if reg_to > MAX_REG:
             raise ValueError(f"Register {reg_to} greater than {MAX_REG}!")
         self.registers[reg_to] = self.registers[reg_from]
+
+    def clear(self, reg: Register):
+        """CLR <reg>
+        Clear the value in register `reg`."""
+        logger.debug(f"CLR {reg}")
+        if reg > MAX_REG:
+            raise ValueError(f"Register {reg} greater than {MAX_REG}!")
+        self.registers[reg] = 0
+
+    def clear_negative_flag(self):
+        """CNF
+        Clear the negative flag"""
+        logger.debug("CNF")
+        self.negative_flag = False
 
     def immediate(self, value: int):
         """IMM <value>
@@ -209,11 +246,25 @@ class CPU:
         check_arithmetic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] + self.registers[reg_2]) % MAX_INT
 
+    def add_with_overflow(self, reg_1, reg_2, reg_to):
+        """ADO <A> <B> <to>
+        Add the values from registers A and B and copy it to register `to`.
+        Sets the value in the OF register to the 0 if the result is less than 256, and 1 otherwise.
+        """
+        logger.debug(f"ADO {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = (self.registers[reg_1] + self.registers[reg_2]) % MAX_INT
+        self.registers[Registers.OF] = (self.registers[reg_1] + self.registers[reg_2]) // MAX_INT
+
     def sub(self, reg_1, reg_2, reg_to):
         """SUB <A> <B> <to>
-        Subtract the values from registers A and B and copy it to register `to`."""
+        Subtract the values from registers A and B and copy it to register `to`.
+        Might set the negative flag to true.
+        """
         logger.debug(f"SUB {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
+        if self.registers[reg_2] > self.registers[reg_1]:
+            self.negative_flag = True
         self.registers[reg_to] = (self.registers[reg_1] - self.registers[reg_2]) % MAX_INT
 
     def multiply(self, reg_1, reg_2, reg_to):
@@ -222,6 +273,16 @@ class CPU:
         logger.debug(f"MUL {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
         self.registers[reg_to] = (self.registers[reg_1] * self.registers[reg_2]) % MAX_INT
+
+    def multiply_with_overflow(self, reg_1, reg_2, reg_to):
+        """MLO <A> <B> <to>
+        Mulitply the values from registers A and B and copy it to register `to`.
+        Sets the value in the OF register to the 0 if the result is less than 256, and (result // 256) otherwise.
+        """
+        logger.debug(f"MLO {reg_1} {reg_2} {reg_to}")
+        check_arithmetic(reg_1, reg_2, reg_to)
+        self.registers[reg_to] = (self.registers[reg_1] * self.registers[reg_2]) % MAX_INT
+        self.registers[Registers.OF] = (self.registers[reg_1] * self.registers[reg_2]) // MAX_INT
 
     def modulo(self, reg_1, reg_2, reg_to):
         """MOD <A> <B> <to>
@@ -348,6 +409,15 @@ class CPU:
         if self.registers[reg_1] <= self.registers[reg_2]:
             self.jump(jump)
 
+    def jump_if_negative_flag(self, jump):
+        """JNR <jump>
+        If the negative flag is set, jump to position `jump`."""
+        logger.debug(f"JNR {jump}")
+        if jump > RAM_SIZE:
+            raise ValueError(f"You tried to leave the ROM! ({jump})")
+        if self.negative_flag:
+            self.jump(jump)
+
     @heavy
     def int_to_sevenseg(self, reg_from, reg_to):
         """SEG <from> <to>
@@ -469,10 +539,10 @@ class CPU:
 
         # Get the current instruction and process it.
         current_ins = self.rom[self.program_counter]
-        # This is needed because we're genericizing here and we need no not get IndexErrors.
-        extended_rom = self.rom + [0, 0, 0, 0]
+        # This is needed because we're genericizing here and we need to not get IndexErrors.
+        extended_rom = self.rom + [0] * MAX_INSTRUCTION_WIDTH
         # Get the next few values in case they're operands.
-        operands = extended_rom[self.program_counter + 1:self.program_counter + 5]
+        operands = extended_rom[self.program_counter + 1:self.program_counter + 1 + MAX_INSTRUCTION_WIDTH]
         found = False
         for o in self.opcodes:
             if o.value != current_ins:
@@ -560,6 +630,12 @@ class CPU:
                     continue
                 case "DATA":
                     instructions[n] = Registers.DATA
+                    continue
+                case "STACK":
+                    instructions[n] = Registers.STACK
+                    continue
+                case "OF":
+                    instructions[n] = Registers.OF
                     continue
                 # Otherwise, is this a label?
                 case x:
