@@ -113,7 +113,7 @@ class CPU:
             Opcode(0x0A, "CZF", self.clear_zero_flag),
             Opcode(0x0B, "COF", self.clear_overflow_flag),
             Opcode(0x49, "JNF", self.jump_if_negative_flag),
-            Opcode(0x49, "JNN", self.jump_if_not_negative_flag),
+            Opcode(0x4D, "JNN", self.jump_if_not_negative_flag),
             Opcode(0x4A, "JZF", self.jump_if_zero_flag),
             Opcode(0x4E, "JNZ", self.jump_if_not_zero_flag),
             Opcode(0x4B, "JOF", self.jump_if_overflow_flag),
