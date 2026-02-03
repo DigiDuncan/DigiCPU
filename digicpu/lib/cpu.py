@@ -131,6 +131,7 @@ class CPU:
             Opcode(0xA4, "NOT", self.logical_not),
             Opcode(0xE5, "XOR", self.logical_xor),
             Opcode(0x64, "JMP", self.jump),
+            Opcode(0x65, "JMR", self.jump_register),
             Opcode(0x68, "INC", self.increment),
             Opcode(0x69, "DEC", self.decrement),
             Opcode(0xE8, "ADD", self.add),
@@ -333,6 +334,15 @@ class CPU:
         if position >= ROM_SIZE:
             raise ROMOutOfBoundsError(position)
         self.program_counter = position % ROM_SIZE
+        self._just_jumped = True
+
+    def jump_register(self, reg: int):
+        """JMR <reg>
+        Jump to position stored in `<reg>` in ROM."""
+        logger.debug(f"JMR {reg}")
+        if reg >= MAX_REG:
+            raise RegisterOverflowError(reg)
+        self.program_counter = self.registers[reg] % ROM_SIZE
         self._just_jumped = True
 
     def increment(self, reg):
