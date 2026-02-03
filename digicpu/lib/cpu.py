@@ -131,6 +131,8 @@ class CPU:
             Opcode(0xA4, "NOT", self.logical_not),
             Opcode(0xE5, "XOR", self.logical_xor),
             Opcode(0x64, "JMP", self.jump),
+            Opcode(0x68, "INC", self.increment),
+            Opcode(0x69, "DEC", self.decrement),
             Opcode(0xE8, "ADD", self.add),
             Opcode(0xE9, "SUB", self.sub),
             Opcode(0xEA, "MUL", self.multiply),
@@ -333,6 +335,32 @@ class CPU:
         self.program_counter = position % ROM_SIZE
         self._just_jumped = True
 
+    def increment(self, reg):
+        """INC <reg>
+        Add one to the value in `reg`.
+        Sets the overflow flag and zero flag.
+        """
+        logger.debug(f"INC {reg}")
+        if reg > MAX_REG:
+            raise RegisterOverflowError(reg)
+        ans = (self.registers[reg] + 1)
+        self.registers[reg] = ans % MAX_INT
+        self.overflow_flag = ans > MAX_INT
+        self.zero_flag = ans == 0
+
+    def decrement(self, reg):
+        """DEC <reg>
+        Subtract one from the value in `reg`.
+        Sets the negative flag and zero flag.
+        """
+        logger.debug(f"DEC {reg}")
+        if reg > MAX_REG:
+            raise RegisterOverflowError(reg)
+        ans = (self.registers[reg] - 1)
+        self.registers[reg] = ans % MAX_INT
+        self.negative_flag = ans < 0
+        self.zero_flag = ans == 0
+
     def add(self, reg_1, reg_2, reg_to):
         """ADD <A> <B> <to>
         Add the values from registers A and B and copy it to register `to`.
@@ -349,7 +377,7 @@ class CPU:
         """ADO <A> <B> <to>
         Add the values from registers A and B and copy it to register `to`.
         Sets the value in the OF register to the 0 if the result is less than 256, and 1 otherwise.
-        Sets the overflow flag or zero flag.
+        Sets the overflow flag and zero flag.
         """
         logger.debug(f"ADO {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
@@ -362,7 +390,7 @@ class CPU:
     def sub(self, reg_1, reg_2, reg_to):
         """SUB <A> <B> <to>
         Subtract the values from registers A and B and copy it to register `to`.
-        Sets the negative flag or zero flag.
+        Sets the negative flag and zero flag.
         """
         logger.debug(f"SUB {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
@@ -375,7 +403,7 @@ class CPU:
     def multiply(self, reg_1, reg_2, reg_to):
         """MUL <A> <B> <to>
         Mulitply the values from registers A and B and copy it to register `to`.
-        Sets the overflow flag or zero flag.
+        Sets the overflow flag and zero flag.
         """
         logger.debug(f"MUL {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)
@@ -388,7 +416,7 @@ class CPU:
         """MLO <A> <B> <to>
         Mulitply the values from registers A and B and copy it to register `to`.
         Sets the value in the OF register to the 0 if the result is less than 256, and (result // 256) otherwise.
-        Sets the overflow flag or zero flag.
+        Sets the overflow flag and zero flag.
         """
         logger.debug(f"MLO {reg_1} {reg_2} {reg_to}")
         check_arithmetic(reg_1, reg_2, reg_to)

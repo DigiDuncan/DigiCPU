@@ -52,6 +52,8 @@ The CPU also has overflow, zero, and negative flags.
 | Logical Not                       | `NOT` | 1        | 0        | 1        | 0        | 0        | 1   | 0   | 0   | 164 | `A4`  | 3     | Logic       |
 | Logical Xor                       | `XOR` | 1        | 1        | 1        | 0        | 0        | 1   | 0   | 1   | 229 | `E5`  | 4     | Logic       |
 | Jump                              | `JMP` | 0        | 1        | 1        | 0        | 0        | 1   | 0   | 0   | 100 | `64`  | 2     | Logic       |
+| Increment                         | `INC` | 0        | 1        | 1        | 0        | 1        | 0   | 0   | 0   | 104 | `68`  | 2     | Math        |
+| Decrement                         | `DEC` | 0        | 1        | 1        | 0        | 1        | 0   | 0   | 1   | 105 | `69`  | 2     | Math        |
 | Add                               | `ADD` | 1        | 1        | 1        | 0        | 1        | 0   | 0   | 0   | 232 | `E8`  | 4     | Math        |
 | Subtract                          | `SUB` | 1        | 1        | 1        | 0        | 1        | 0   | 0   | 1   | 233 | `E9`  | 4     | Math        |
 | Multiply                          | `MUL` | 1        | 1        | 1        | 0        | 1        | 0   | 1   | 0   | 234 | `EA`  | 4     | Math        |
