@@ -737,7 +737,7 @@ class CPU:
             found = True
             o.run(operands)
             self._last_instruction_size = o.width
-            self._current_instruction = f"{o.assembly} {' '.join(str(o) for o in operands[:o.width -1])}"
+            self._current_instruction = f"{o.assembly} {' '.join(f"{o:02X}" for o in operands[:o.width -1])}"
         if not found:
             raise UnknownOpcodeError(current_ins, self.program_counter)
 

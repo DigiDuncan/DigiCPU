@@ -2,10 +2,12 @@ import importlib.resources as pkg_resources
 import logging
 
 import arcade
+from arcade.types import Color
 import arrow
+import pyglet
 from pyglet.graphics import Batch
 
-import digicpu.data
+import digicpu.data.programs
 from digicpu.lib.cpu import CPU, STACK_SIZE, Registers
 from digicpu.lib.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
@@ -30,73 +32,74 @@ SCREEN_TITLE = "DigiCPU"
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 
-# Load a fallback monospace font in case Fira Code isn't installed (Liberation Mono)
-arcade.resources.load_liberation_fonts()
+BG_COLOR = Color.from_uint24(0x1c7094)
+ACCENT_DARK_COLOR = Color.from_uint24(0x83CAE8)
+ACCENT_LIGHT_COLOR = Color.from_uint24(0xffb26b)
+TEXT_DIM_COLOR = Color.from_uint24(0xaaaaaa)
+TEXT_COLOR = Color.from_uint24(0xfff6e9)
 
 
 class DigiCPUWindow(arcade.Window):
-
-
     def __init__(self, width, height, title, fps: float = 240.0):
         super().__init__(width, height, title, update_rate = 1 / fps)
         self.fps: float = fps
- 
-        self.instruction_font = ("Fira Code", "Liberation Mono")
 
         self.now = arrow.now()
-        self.sprite_list: arcade.SpriteList = None
-
-        self.cpu: CPU = None
-        self.output_display: SevenSegmentDisplay = None
-
-        self.digits: list[SevenSeg] = []
-        self.source_file: str | None = None
-        self.tick: int = 0
-        self.tick_multiplier: int = 1
-
-        self.text_batch: Batch | None = None
-        self.fps_text: arcade.Text | None = None
-        self.rate_text: arcade.Text | None = None
-        self.tick_text: arcade.Text | None = None
-        self.instruction_text: arcade.Text | None = None
-        self.program_text: arcade.Text | None = None
-
-        self.input_value: int = 0
-
-        self.paused: bool = False
-
-    def setup(self):
-        self.text_batch = Batch()
         self.sprite_list = arcade.SpriteList()
 
         self.cpu = CPU()
-        t = pkg_resources.read_text(digicpu.data, "ramdom.asm")
-        self.cpu.load_string(t)
-
         self.output_display = SevenSegmentDisplay()
-        self.digits = []
 
-        self.fps_text = arcade.Text(f"{self.fps} FPS", 5, 5, batch=self.text_batch)
-        self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, 25, batch=self.text_batch)
-        self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, 45, batch=self.text_batch)
-        self.instruction_text = arcade.Text("NOP", 5, SCREEN_HEIGHT - 5, font_size = 24, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch)
-        self.program_text = arcade.Text("Program Counter: 0", 5, SCREEN_HEIGHT - 45, font_size = 24, anchor_y = "top", batch=self.text_batch)
-        self.input_text = arcade.Text("Input: 0", 5, SCREEN_HEIGHT - 85, font_size = 24, anchor_y = "top", batch=self.text_batch)
-
+        self.digits: list[SevenSeg] = []
         for _ in range(8):
-            self.digits.append(SevenSeg(SCREEN_WIDTH // 9))
-
-        for d in self.digits:
-            self.sprite_list.append(d)
+            self.digits.append(SevenSeg(SCREEN_WIDTH // 11, on_color = ACCENT_LIGHT_COLOR.rgb, off_color = ACCENT_DARK_COLOR.rgb))
 
         for n, d in enumerate(self.digits):
-            d.center_y = self.height / 2
-            d.left = ((d.width / 9) * (n + 1)) + (d.width * n)
+            self.sprite_list.append(d)
+            d.center_y = self.height * 0.75
+            d.left = ((d.width / 11) * (n + 1)) + (d.width * (n + 1))
 
-        self.busy_flag_text = arcade.Text("B", self.digits[0].left, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
-        self.negative_flag_text = arcade.Text("N", self.busy_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
-        self.zero_flag_text = arcade.Text("Z", self.negative_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
-        self.overflow_flag_text = arcade.Text("O", self.zero_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 16, anchor_y = "top", font_name = self.instruction_font, batch=self.text_batch, color = arcade.color.GRAY)
+        t = pkg_resources.read_text(digicpu.data.programs, "program.asm")
+        self.cpu.load_string(t)
+
+        self.tick: int = 0
+        self.tick_multiplier: int = 1
+
+        self.input_value: int = 0
+        self.paused: bool = False
+
+        self.text_batch: Batch = Batch()
+
+        self.fps_text = arcade.Text(f"{self.fps} FPS", 5, self.height - 5, anchor_y = "top", batch = self.text_batch)
+        self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, self.fps_text.bottom, anchor_y = "top", batch=self.text_batch)
+        self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, self.tick_text.bottom, anchor_y = "top", batch=self.text_batch)
+
+        self.busy_flag_text = arcade.Text("B", self.digits[0].left, self.digits[0].bottom - 5, font_size = 22, anchor_y = "top", font_name = "Fira Code", batch=self.text_batch, color = arcade.color.GRAY)
+        self.negative_flag_text = arcade.Text("N", self.busy_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 22, anchor_y = "top", font_name = "Fira Code", batch=self.text_batch, color = arcade.color.GRAY)
+        self.zero_flag_text = arcade.Text("Z", self.negative_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 22, anchor_y = "top", font_name = "Fira Code", batch=self.text_batch, color = arcade.color.GRAY)
+        self.overflow_flag_text = arcade.Text("O", self.zero_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 22, anchor_y = "top", font_name = "Fira Code", batch=self.text_batch, color = arcade.color.GRAY)
+
+        self.program_text = arcade.Text("PC 00", self.digits[-1].right, self.digits[0].bottom - 5, font_size = 24, anchor_y = "top", anchor_x = "right", align = "right", batch=self.text_batch, font_name = "Fira Code", color = ACCENT_LIGHT_COLOR)
+
+        self.rom_text_width = 16
+        rom = ""
+        for i, b in enumerate(self.cpu.rom):
+            rom += f"{b:02X}"
+            if i % self.rom_text_width == self.rom_text_width - 1:
+                rom += "\n"
+        rom.rstrip("\n")
+
+        self.rom_doc = pyglet.text.document.FormattedDocument(rom)
+        self.rom_doc.set_style(0, len(self.rom_doc.text), {"font_name": "Super Mario Bros. NES", "font_size": 12, "color": TEXT_DIM_COLOR})
+        self.rom_text = pyglet.text.DocumentLabel(self.rom_doc, x = 5, y = -15, batch = self.text_batch, multiline = True, width = self.width, anchor_y = "bottom")
+
+        self.instruction_doc = pyglet.text.document.FormattedDocument("NOP")
+        self.instruction_doc.set_style(0, len(self.instruction_doc.text), {"font_name": "Super Mario Bros. NES", "font_size": 24, "color": TEXT_COLOR})
+        self.instruction_text = pyglet.text.DocumentLabel(self.instruction_doc, 5, self.rom_text.top + 5, batch = self.text_batch)
+
+
+    def setup(self):
+        ...
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.R:
@@ -147,21 +150,39 @@ class DigiCPUWindow(arcade.Window):
         elif key == arcade.key.COMMA:
             self.input_value -= 1
 
+    def update_rom_text(self):
+        self.rom_doc.set_style(0, len(self.rom_doc.text), {"color": TEXT_DIM_COLOR})
+
+        # Find where in the text to start coloring in
+        byte = self.cpu.program_counter - self.cpu._last_instruction_size
+        line = byte // self.rom_text_width
+        col = byte % self.rom_text_width
+
+        idx = (self.rom_text_width * 2 * line) + (col * 2)
+        span_width = self.cpu._last_instruction_size * 2
+
+        span_width = self.cpu._last_instruction_size * 2
+        if (col + span_width) > (self.rom_text_width * 2):
+            span_width += 1
+
+        self.rom_doc.set_style(idx, idx + span_width, {"color": TEXT_COLOR})
+
+        self.instruction_doc.text = self.cpu._current_instruction
+        self.instruction_doc.set_style(0, len(self.instruction_doc.text), {"color": TEXT_DIM_COLOR})
+        idx = self.instruction_doc.text.index(" ")
+        self.instruction_doc.set_style(0, idx, {"color": TEXT_COLOR})
+
     def on_update(self, delta_time):
         self.fps = round(1 / delta_time)
-        self.fps_text.value = f"{self.fps} FPS"
         self.now = arrow.now()
+
         if self.paused:
-            self.tick_text.value = f"Tick {self.tick} | PAUSED"
             return
-        else:
-            self.tick_text.value = f"Tick {self.tick}"
 
         if not self.cpu._halt_flag:
             self.tick += 1
         if self.tick % self.tick_multiplier == 0:
             self.cpu.input_register = self.input_value
-
             if self.cpu.program_counter <= 255:
                 self.cpu.step()
 
@@ -176,48 +197,21 @@ class DigiCPUWindow(arcade.Window):
             self.sprite_list.update()
 
         self.rate_text.value = f"Tick Rate: 1:{self.tick_multiplier}"
-        self.instruction_text.value = self.cpu._current_instruction
-        self.program_text.value = f"Program Counter: {self.cpu.program_counter}"
-        self.input_text.value = f"Input: {self.input_value}"
+        self.program_text.value = f"PC {self.cpu.program_counter:02X}"
 
-        self.busy_flag_text.color = arcade.color.RED if self.cpu.busy_flag else arcade.color.GRAY
-        self.negative_flag_text.color = arcade.color.RED if self.cpu.negative_flag else arcade.color.GRAY
-        self.zero_flag_text.color = arcade.color.RED if self.cpu.zero_flag else arcade.color.GRAY
-        self.overflow_flag_text.color = arcade.color.RED if self.cpu.overflow_flag else arcade.color.GRAY
+        self.busy_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.busy_flag else ACCENT_DARK_COLOR
+        self.negative_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.negative_flag else ACCENT_DARK_COLOR
+        self.zero_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.zero_flag else ACCENT_DARK_COLOR
+        self.overflow_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.overflow_flag else ACCENT_DARK_COLOR
 
-    def draw_ram(self):
-        SQUARE_SIZE = 8
-        WIDTH = 16
-        HEIGHT = self.cpu.ram.size // WIDTH
-        BORDER = 4
-
-        QUARTER_SQUARE = SQUARE_SIZE // 4
-        THREE_QUARTERS = QUARTER_SQUARE * 3
-
-        K_COLOR = (255, 0, 0, 255)
-
-        start_x = SCREEN_WIDTH - (SQUARE_SIZE * WIDTH + BORDER)
-        start_y = SQUARE_SIZE * HEIGHT + BORDER
-        for i in range(HEIGHT):
-            for j in range(WIDTH):
-                x = start_x + (j * SQUARE_SIZE)
-                y = start_y - (i * SQUARE_SIZE)
-                k = i * WIDTH + j
-                c = self.cpu.ram.load(k)
-                color = (0, 0, c, 255) if k < STACK_SIZE else (c, c, c, 255)
-                arcade.draw_lrbt_rectangle_filled(x, x + SQUARE_SIZE, y - SQUARE_SIZE, y, color)
-                if k == self.cpu.registers[Registers.STACK]:
-                    arcade.draw_lrbt_rectangle_filled(x + QUARTER_SQUARE, x + THREE_QUARTERS, y - THREE_QUARTERS, y - QUARTER_SQUARE, K_COLOR)
+        self.update_rom_text()
 
     def on_draw(self):
-        self.clear()
+        self.clear(BG_COLOR)
         self.sprite_list.draw()
         self.text_batch.draw()
-        self.draw_ram()
-
 
 def main():
     window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     window.setup()
     arcade.run()
-
