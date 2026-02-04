@@ -8,6 +8,7 @@ import pyglet
 from pyglet.graphics import Batch
 
 import digicpu.data.programs
+import digicpu.data.fonts
 from digicpu.lib.cpu import CPU, STACK_SIZE, Registers
 from digicpu.lib.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
@@ -212,6 +213,12 @@ class DigiCPUWindow(arcade.Window):
         self.text_batch.draw()
 
 def main():
+
+    with pkg_resources.path(digicpu.data.fonts, "NES.ttf") as p:
+        arcade.load_font(p)
+    with pkg_resources.path(digicpu.data.fonts, "FIRACODE.ttf") as p:
+        arcade.load_font(p)
+
     window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     window.setup()
     arcade.run()
