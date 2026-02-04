@@ -46,9 +46,9 @@ class DigiCPUWindow(arcade.Window):
 
         self.text_batch: Batch = Batch()
 
-        self.fps_text = arcade.Text(f"{self.fps} FPS", 5, self.height - 5, anchor_y = "top", batch = self.text_batch)
-        self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, self.fps_text.bottom, anchor_y = "top", batch=self.text_batch)
-        self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, self.tick_text.bottom, anchor_y = "top", batch=self.text_batch)
+        self.fps_text = arcade.Text(f"{self.fps} FPS", 5, self.height - 5, anchor_y = "top", batch = self.text_batch, font_name = "Fira Code")
+        self.tick_text = arcade.Text(f"Tick {self.tick} | PAUSED", 5, self.fps_text.bottom, anchor_y = "top", batch=self.text_batch, font_name = "Fira Code")
+        self.rate_text = arcade.Text(f"Tick Rate 1:{self.tick_multiplier}", 5, self.tick_text.bottom, anchor_y = "top", batch=self.text_batch, font_name = "Fira Code")
 
         self.busy_flag_text = arcade.Text("B", self.digits[0].left, self.digits[0].bottom - 5, font_size = 22, anchor_y = "top", font_name = "Fira Code", batch=self.text_batch, color = arcade.color.GRAY)
         self.negative_flag_text = arcade.Text("N", self.busy_flag_text.right + 5, self.digits[0].bottom - 5, font_size = 22, anchor_y = "top", font_name = "Fira Code", batch=self.text_batch, color = arcade.color.GRAY)

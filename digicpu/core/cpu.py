@@ -1,18 +1,16 @@
-import re
 from functools import wraps
-from typing import Callable, cast
+from typing import Callable
 
+from digicpu.core.compiler import compile
 from digicpu.core.opcode import Opcode
 from digicpu.core.ram import RAM
 from digicpu.lib.checks import check_arithmetic, check_logic
 from digicpu.lib.errors import (IntegerOverflowError, RegisterOverflowError,
-                                ROMOutOfBoundsError, UnknownInstructionError,
-                                UnknownOpcodeError)
+                                ROMOutOfBoundsError, UnknownOpcodeError)
 from digicpu.lib.log import logger
 from digicpu.lib.types import (MAX_INSTRUCTION_WIDTH, MAX_INT, MAX_REG,
                                RAM_SIZE, ROM_SIZE, STACK_SIZE, Register,
                                Registers)
-from digicpu.lib.utils import make_int
 
 
 # This is a decorator and shouldn't be invoked.
@@ -643,80 +641,7 @@ class CPU:
 
     def load_string(self, s: str):
         """Load an assembly program from string."""
-        s = re.sub(r"#(.*)\n", "", s)  # comments
-
-        # Deal with constants. It's not really an opcode, so it's not coded like one.
-        replacements = {}
-        constants: list[str] = re.findall(r"CONST (.+ .+)\n", s)
-        for constant in constants:
-            split = constant.split(maxsplit = 1)
-            replacements[split[0]] = split[1]
-
-        # Replace everything we determined needs to be, e.g.: constants.
-        for key, value in replacements.items():
-            s = s.replace(key, value)
-
-        # Make sure everything's uppercase, since we assume that a lot.
-        s = s.upper()
-
-        # Fix legacy IMM
-        s = re.sub(r"IMM (.+)\n", "IMM \\1 0\n", s)
-
-        # Store labels for later.
-        labels = {}
-        lines = s.split("\n")
-        n = 0
-        for line in lines:
-            line = line.strip()
-
-            # If we find a label definition, save it.
-            if m := re.match(r"LABEL (.*)", line):
-                labels[m.group(1)] = n
-            else:
-                # Step over opcodes, since we know how wide they are.
-                for o in self.opcodes:
-                    if line.startswith(o.assembly):
-                        n += o.width
-                        break
-
-        # Replace all labels with nothing, since we dealt with them.
-        s = re.sub(r"LABEL (.*)\n", "", s)
-
-        # No newlines.
-        s = s.replace("\n", " ")
-
-        # Split the instructions by spaces and clean then up.
-        instructions = s.split()
-        instructions = [i.strip().upper() for i in instructions]
-        instructions = cast(list[str | int], instructions)
-
-        # Step through these instructions.
-        for n, i in enumerate(instructions):
-            match i:
-                # Is a valid Opcode.
-                case x if x in self.valid_opcodes:
-                    opcode = next(o for o in self.opcodes if o.assembly == x)
-                    instructions[n] = opcode.value
-                    continue
-                # Register aliases
-                case x if x in [m.name for m in Registers]:
-                    instructions[n] = Registers[x]
-                    continue
-                # Otherwise, is this a label?
-                case x:
-                    if x in labels:
-                        instructions[n] = make_int(labels[x])
-                        continue
-
-            # Otherwise it's just a number I guess.
-            instructions[n] = make_int(i)
-
-        # If we didn't turn something into a number, something messed up.
-        for i in instructions:
-            if not isinstance(i, int):
-                raise UnknownInstructionError(i)
-
-        instructions = cast(list[int], instructions)
+        instructions = compile(s, self.opcodes)
         self.load(instructions)
 
     def reset(self):
