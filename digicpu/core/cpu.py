@@ -680,6 +680,11 @@ class CPU:
                 continue
             found = True
             o.run(operands)
+
+            # Handle RAM
+            if len(operands) == 2 and operands[1] == Registers.RAMD:
+                self.ram.save(self.ram_address_register, self.ram_data_register)
+
             self._last_instruction_size = o.width
             self._current_instruction = f"{o.assembly} {' '.join(f"{o:02X}" for o in operands[:o.width -1])}"
         if not found:
