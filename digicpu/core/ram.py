@@ -1,5 +1,6 @@
 from typing import Sequence
 
+
 class RAM:
     def __init__(self, size: int = 256):
         self.size = size

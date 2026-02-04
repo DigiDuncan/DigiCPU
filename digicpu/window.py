@@ -1,44 +1,18 @@
 import importlib.resources as pkg_resources
-import logging
 
 import arcade
-from arcade.types import Color
 import arrow
 import pyglet
 from pyglet.graphics import Batch
 
-import digicpu.data.programs
 import digicpu.data.fonts
+import digicpu.data.programs
+from digicpu.constants import (ACCENT_DARK_COLOR, ACCENT_LIGHT_COLOR, BG_COLOR,
+                               BG_DARK_COLOR, SCREEN_HEIGHT, SCREEN_TITLE,
+                               SCREEN_WIDTH, TEXT_COLOR, TEXT_DIM_COLOR)
 from digicpu.core.cpu import CPU
 from digicpu.core.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
-
-
-logger = logging.getLogger("digicpu")
-logging.basicConfig(level=logging.INFO)
-logger.setLevel(logging.DEBUG)
-
-
-try:
-    from digiformatter import logger as digilogger
-    dfhandler = digilogger.DigiFormatterHandler()
-    logger.handlers = []
-    logger.propagate = False
-    logger.addHandler(dfhandler)
-except ImportError:
-    pass
-
-
-SCREEN_TITLE = "DigiCPU"
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
-
-BG_COLOR = Color.from_uint24(0x1c7094)
-BG_DARK_COLOR = Color.from_uint24(0x638D9F)
-ACCENT_DARK_COLOR = Color.from_uint24(0x83CAE8)
-ACCENT_LIGHT_COLOR = Color.from_uint24(0xffb26b)
-TEXT_DIM_COLOR = Color.from_uint24(0xaaaaaa)
-TEXT_COLOR = Color.from_uint24(0xfff6e9)
 
 
 class DigiCPUWindow(arcade.Window):
@@ -226,7 +200,6 @@ class DigiCPUWindow(arcade.Window):
         self.text_batch.draw()
 
 def main():
-
     with pkg_resources.path(digicpu.data.fonts, "NES.ttf") as p:
         arcade.load_font(p)
     with pkg_resources.path(digicpu.data.fonts, "FIRACODE.ttf") as p:

@@ -1,6 +1,7 @@
 import arcade
 from arcade.types import Color
 
+
 def packed_color_to_color(packed: int) -> Color:
 
     r = ((packed & 0b00110000) >> 4) * 64

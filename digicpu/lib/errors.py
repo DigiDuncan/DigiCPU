@@ -1,5 +1,5 @@
-from digicpu.lib.types import MAX_INT, MAX_REG, MAX_INSTRUCTION_WIDTH, Register, \
-    ROM_SIZE, RAM_SIZE, STACK_SIZE
+from digicpu.lib.types import MAX_INT, MAX_REG, RAM_SIZE, ROM_SIZE
+
 
 class RegisterOverflowError(ValueError):
     def __init__(self, value: int) -> None:
@@ -8,6 +8,10 @@ class RegisterOverflowError(ValueError):
 class ROMOutOfBoundsError(ValueError):
     def __init__(self, value: int) -> None:
         super().__init__(f"Position {value} outside of ROM (max size {ROM_SIZE})!")
+
+class RAMOutOfBoundsError(ValueError):
+    def __init__(self, value: int) -> None:
+        super().__init__(f"Position {value} outside of ROM (max size {RAM_SIZE})!")
 
 class IntegerOverflowError(ValueError):
     def __init__(self, value: int) -> None:

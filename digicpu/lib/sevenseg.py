@@ -33,7 +33,7 @@ class SevenSeg(arcade.Sprite):
     cid = 0
 
     def __init__(self, width: int, thinness: float = 6.5,
-                 on_color: tuple[int] = arcade.color.RED, off_color: tuple[int] = (32, 32, 32), *args, **kwargs):
+                 on_color: tuple[int, ...] = arcade.color.RED, off_color: tuple[int, ...] = (32, 32, 32), *args, **kwargs):
         self._w = width
         self.digit_width = int(self._w * (4 / 5))
         if thinness < 2.5:

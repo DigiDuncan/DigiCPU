@@ -1,78 +1,18 @@
-from functools import wraps
 import re
-from typing import Callable, Optional, cast
+from functools import wraps
+from typing import Callable, cast
 
-# LOGGING STUFF
-import logging
-
-from digicpu.lib.errors import RegisterOverflowError, ROMOutOfBoundsError, IntegerOverflowError, \
-    UnknownInstructionError, UnknownOpcodeError
+from digicpu.core.opcode import Opcode
 from digicpu.core.ram import RAM
-from digicpu.lib.types import MAX_INT, MAX_REG, MAX_INSTRUCTION_WIDTH, Register, \
-    ROM_SIZE, RAM_SIZE, STACK_SIZE, Registers
-
-logger = logging.getLogger("digicpu")
-logging.basicConfig(level=logging.INFO)
-logger.setLevel(logging.DEBUG)
-
-try:
-    from digiformatter import logger as digilogger
-    dfhandler = digilogger.DigiFormatterHandler()
-    logger.handlers = []
-    logger.propagate = False
-    logger.addHandler(dfhandler)
-except ImportError:
-    pass
-
-class Opcode:
-    def __init__(self, value: int, assembly: str, func: Optional[Callable] = None):
-        self.value = value
-        self.assembly = assembly
-        self.function = func
-
-    @property
-    def width(self) -> int:
-        # Instruction size is encoded with the first 2 bits of the opcode.
-        return ((self.value & 0b11000000) >> 6) + 1
-
-    def run(self, args: list[int]) -> None:
-        if not self.function:
-            return
-        args = args[:self.width - 1]
-        self.function(*args)
-
-
-def make_int(i: str | int) -> int:
-    if isinstance(i, int):
-        return i
-    if i.startswith("0X"):
-        return int(i[2:], 16)
-    elif i.startswith("0B"):
-        return int(i[2:], 2)
-    elif i.startswith("\""):
-        return ord(i[1]) % MAX_INT
-    else:
-        return int(i)
-
-
-def check_arithmetic(reg_1, reg_2, reg_to):
-    """Sanity checks for arthimatic functions."""
-    if reg_1 > MAX_REG:
-        raise RegisterOverflowError(reg_1)
-    if reg_2 > MAX_REG:
-        raise RegisterOverflowError(reg_2)
-    if reg_to > MAX_REG:
-        raise RegisterOverflowError(reg_to)
-
-
-def check_logic(reg_1, reg_2, jump):
-    """Sanity checks for logical functions."""
-    if reg_1 > MAX_REG:
-        raise RegisterOverflowError(reg_1)
-    if reg_2 > MAX_REG:
-        raise RegisterOverflowError(reg_2)
-    if jump > ROM_SIZE:
-        raise ROMOutOfBoundsError(jump)
+from digicpu.lib.checks import check_arithmetic, check_logic
+from digicpu.lib.errors import (IntegerOverflowError, RegisterOverflowError,
+                                ROMOutOfBoundsError, UnknownInstructionError,
+                                UnknownOpcodeError)
+from digicpu.lib.log import logger
+from digicpu.lib.types import (MAX_INSTRUCTION_WIDTH, MAX_INT, MAX_REG,
+                               RAM_SIZE, ROM_SIZE, STACK_SIZE, Register,
+                               Registers)
+from digicpu.lib.utils import make_int
 
 
 # This is a decorator and shouldn't be invoked.
@@ -377,7 +317,7 @@ class CPU:
         check_arithmetic(reg_1, reg_2, reg_to)
         ans = (self.registers[reg_1] + self.registers[reg_2])
         self.registers[reg_to] = ans % MAX_INT
-        self.registers[Registers.OF] = ans // MAX_INT
+        self.registers[Registers.OVFL] = ans // MAX_INT
         self.overflow_flag = ans > MAX_INT * MAX_INT
         self.zero_flag = ans == 0
 
@@ -416,7 +356,7 @@ class CPU:
         check_arithmetic(reg_1, reg_2, reg_to)
         ans = (self.registers[reg_1] * self.registers[reg_2])
         self.registers[reg_to] = ans % MAX_INT
-        self.registers[Registers.OF] = ans // MAX_INT
+        self.registers[Registers.OVFL] = ans // MAX_INT
         self.overflow_flag = ans > MAX_INT * MAX_INT
         self.zero_flag = ans == 0
 

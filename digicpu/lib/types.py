@@ -1,8 +1,8 @@
 from enum import IntEnum
 from typing import Literal
 
-
 Register = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+Position = int
 ROM_SIZE = 256
 RAM_SIZE = 256
 STACK_SIZE = 16
