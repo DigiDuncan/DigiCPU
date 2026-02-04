@@ -1,4 +1,4 @@
-from digicpu import core
+from digicpu import window
 
 if __name__ == "__main__":
-    core.main()
+    window.main()

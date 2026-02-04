@@ -1,6 +1,5 @@
 import importlib.resources as pkg_resources
 import logging
-import re
 
 import arcade
 from arcade.types import Color
@@ -10,8 +9,8 @@ from pyglet.graphics import Batch
 
 import digicpu.data.programs
 import digicpu.data.fonts
-from digicpu.lib.cpu import CPU, STACK_SIZE, Registers
-from digicpu.lib.display import SevenSegmentDisplay
+from digicpu.core.cpu import CPU
+from digicpu.core.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
 
 
@@ -108,53 +107,53 @@ class DigiCPUWindow(arcade.Window):
     def setup(self):
         ...
 
-    def on_key_press(self, key, modifiers):
-        if key == arcade.key.R:
+    def on_key_press(self, symbol, modifiers):
+        if symbol == arcade.key.R:
             self.cpu.reset()
             self.output_display.reset()
             self.tick = 0
-        elif key == arcade.key.NUM_ADD:
+        elif symbol == arcade.key.NUM_ADD:
             new = max(self.tick_multiplier + 1, 1)
             self.tick_multiplier = new
-        elif key == arcade.key.NUM_SUBTRACT:
+        elif symbol == arcade.key.NUM_SUBTRACT:
             new = max(self.tick_multiplier - 1, 1)
             self.tick_multiplier = new
-        elif key == arcade.key.SPACE:
+        elif symbol == arcade.key.SPACE:
             self.paused = not self.paused
 
-        elif key == arcade.key.Z:
+        elif symbol == arcade.key.Z:
             self.input_value += 128
-        elif key == arcade.key.X:
+        elif symbol == arcade.key.X:
             self.input_value += 64
-        elif key == arcade.key.C:
+        elif symbol == arcade.key.C:
             self.input_value += 32
-        elif key == arcade.key.V:
+        elif symbol == arcade.key.V:
             self.input_value += 16
-        elif key == arcade.key.B:
+        elif symbol == arcade.key.B:
             self.input_value += 8
-        elif key == arcade.key.N:
+        elif symbol == arcade.key.N:
             self.input_value += 4
-        elif key == arcade.key.M:
+        elif symbol == arcade.key.M:
             self.input_value += 2
-        elif key == arcade.key.COMMA:
+        elif symbol == arcade.key.COMMA:
             self.input_value += 1
 
-    def on_key_release(self, key, modifiers):
-        if key == arcade.key.Z:
+    def on_key_release(self, symbol, modifiers):
+        if symbol == arcade.key.Z:
             self.input_value -= 128
-        elif key == arcade.key.X:
+        elif symbol == arcade.key.X:
             self.input_value -= 64
-        elif key == arcade.key.C:
+        elif symbol == arcade.key.C:
             self.input_value -= 32
-        elif key == arcade.key.V:
+        elif symbol == arcade.key.V:
             self.input_value -= 16
-        elif key == arcade.key.B:
+        elif symbol == arcade.key.B:
             self.input_value -= 8
-        elif key == arcade.key.N:
+        elif symbol == arcade.key.N:
             self.input_value -= 4
-        elif key == arcade.key.M:
+        elif symbol == arcade.key.M:
             self.input_value -= 2
-        elif key == arcade.key.COMMA:
+        elif symbol == arcade.key.COMMA:
             self.input_value -= 1
 
     def update_rom_text(self):
@@ -168,7 +167,6 @@ class DigiCPUWindow(arcade.Window):
         idx = (self.rom_text_width * 2 * line) + (col * 2)
         span_width = self.cpu._last_instruction_size * 2
 
-        span_width = self.cpu._last_instruction_size * 2
         if (col + span_width) > (self.rom_text_width * 2):
             span_width += 1
 

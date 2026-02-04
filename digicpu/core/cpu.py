@@ -7,9 +7,9 @@ import logging
 
 from digicpu.lib.errors import RegisterOverflowError, ROMOutOfBoundsError, IntegerOverflowError, \
     UnknownInstructionError, UnknownOpcodeError
-from digicpu.lib.ram import RAM
+from digicpu.core.ram import RAM
 from digicpu.lib.types import MAX_INT, MAX_REG, MAX_INSTRUCTION_WIDTH, Register, \
-    ROM_SIZE, RAM_SIZE, STACK_SIZE
+    ROM_SIZE, RAM_SIZE, STACK_SIZE, Registers
 
 logger = logging.getLogger("digicpu")
 logging.basicConfig(level=logging.INFO)
@@ -40,15 +40,6 @@ class Opcode:
             return
         args = args[:self.width - 1]
         self.function(*args)
-
-
-class Registers:
-    IMR = 0
-    IN = 8
-    ADDR = 9
-    DATA = 10
-    STACK = 11
-    OF = 12
 
 
 def make_int(i: str | int) -> int:
@@ -103,11 +94,9 @@ class CPU:
 
         self.opcodes = [
             Opcode(0x00, "NOP"),
-            Opcode(0x41, "IMM", self.immediate),
+            Opcode(0x81, "IMM", self.immediate),
             Opcode(0x07, "HLT", self.halt),
             Opcode(0x91, "CPY", self.copy),
-            Opcode(0x50, "CLR", self.clear),
-            Opcode(0x10, "RST", self.reset_state),
             Opcode(0x08, "CLF", self.clear_flags),
             Opcode(0x09, "CNF", self.clear_negative_flag),
             Opcode(0x0A, "CZF", self.clear_zero_flag),
@@ -130,7 +119,7 @@ class CPU:
             Opcode(0xE3, "NOR", self.logical_nor),
             Opcode(0xA4, "NOT", self.logical_not),
             Opcode(0xE5, "XOR", self.logical_xor),
-            Opcode(0x64, "JMP", self.jump),
+            Opcode(0x71, "JMP", self.jump),
             Opcode(0x65, "JMR", self.jump_register),
             Opcode(0x68, "INC", self.increment),
             Opcode(0x69, "DEC", self.decrement),
@@ -142,10 +131,6 @@ class CPU:
             Opcode(0xED, "SHR", self.shift_right),
             Opcode(0xEE, "MIN", self.minimum),
             Opcode(0xEF, "MAX", self.maximum),
-            Opcode(0x98, "RLD", self.ram_load),
-            Opcode(0x99, "RSV", self.ram_save),
-            Opcode(0x9A, "RLR", self.ram_load_register),
-            Opcode(0x9B, "RSR", self.ram_save_register),
             Opcode(0x5C, "PSH", self.push),
             Opcode(0x5D, "POP", self.pop),
             Opcode(0xBF, "SEG", self.int_to_sevenseg),
@@ -171,43 +156,59 @@ class CPU:
 
     @property
     def input_register(self) -> int:
-        return self.registers[8]
+        return self.registers[Registers.INPT]
 
     @input_register.setter
     def input_register(self, v):
-        self.registers[8] = v
+        self.registers[Registers.INPT] = v
 
     @property
     def address_register(self) -> int:
-        return self.registers[9]
+        return self.registers[Registers.ADDR]
 
     @address_register.setter
     def address_register(self, v):
-        self.registers[9] = v
+        self.registers[Registers.ADDR] = v
 
     @property
     def data_register(self) -> int:
-        return self.registers[10]
+        return self.registers[Registers.DATA]
 
     @data_register.setter
     def data_register(self, v):
-        self.registers[10] = v
+        self.registers[Registers.DATA] = v
 
     @property
     def stack_register(self) -> int:
-        return self.registers[11]
+        return self.registers[Registers.STCK]
 
     @stack_register.setter
     def stack_register(self, v):
-        self.registers[11] = v
+        self.registers[Registers.STCK] = v
 
     @property
     def overflow_register(self) -> int:
-        return self.registers[12]
+        return self.registers[Registers.OVFL]
 
     @overflow_register.setter
     def overflow_register(self, v):
-        self.registers[12] = v
+        self.registers[Registers.OVFL] = v
+
+    @property
+    def ram_address_register(self) -> int:
+        return self.registers[Registers.RAMA]
+
+    @ram_address_register.setter
+    def ram_address_register(self, v):
+        self.registers[Registers.RAMA] = v
+
+    @property
+    def ram_data_register(self) -> int:
+        return self.registers[Registers.RAMA]
+
+    @ram_data_register.setter
+    def ram_data_register(self, v):
+        self.registers[Registers.RAMD] = v
 
     def copy(self, reg_from: Register, reg_to: Register):
         """CPY <from> <to>
@@ -218,25 +219,6 @@ class CPU:
         if reg_to > MAX_REG:
             raise RegisterOverflowError(reg_to)
         self.registers[reg_to] = self.registers[reg_from]
-
-    def clear(self, reg: Register):
-        """CLR <reg>
-        Clear the value in register `reg`."""
-        logger.debug(f"CLR {reg}")
-        if reg > MAX_REG:
-            raise RegisterOverflowError(reg)
-        self.registers[reg] = 0
-
-    def reset_state(self):
-        """RST
-        Clear the value of all registers and flags."""
-        logger.debug("RST")
-        for v in range(len(self.registers)):
-            self.registers[v] = 0
-        self.busy_flag = False
-        self.negative_flag = False
-        self.overflow_flag = False
-        self.zero_flag = False
 
     def clear_negative_flag(self):
         """CNF
@@ -318,14 +300,16 @@ class CPU:
         if not self.overflow_flag:
             self.jump(jump)
 
-    def immediate(self, value: int):
-        """IMM <value>
+    def immediate(self, value: int, reg: Register):
+        """IMM <value> <reg>
         Uses `value` like it's just a normal number.
         Can also be in the form of 0xVAL, 0bVAL, or a single character \"V\""""
         logger.debug(f"IMM {value}")
         if value >= MAX_INT:
             raise IntegerOverflowError(value)
-        self.registers[Registers.IMR] = value
+        if reg > MAX_REG:
+            raise RegisterOverflowError(reg)
+        self.registers[reg] = value
 
     def jump(self, position: int):
         """JMP <position>
@@ -653,46 +637,6 @@ class CPU:
             case 88 | 120:
                 self.registers[reg_to] = 0
 
-    def ram_load(self, pos_from, reg_to):
-        """RLD <pos_from> <reg_to>
-        Load the value from position `pos_from` in RAM into register `reg_to`."""
-        logger.debug(f"RLD {pos_from} {reg_to}")
-        if reg_to > MAX_REG:
-            raise RegisterOverflowError(reg_to)
-        if pos_from > ROM_SIZE:
-            raise ROMOutOfBoundsError(pos_from)
-        self.registers[reg_to] = self.ram.load(pos_from)
-
-    def ram_save(self, reg_from, pos_to):
-        """RSV <reg_from> <pos_to>
-        Save the value from register `reg_from` to RAM position `pos_to`."""
-        logger.debug(f"RSV {reg_from} {pos_to}")
-        if reg_from > MAX_REG:
-            raise RegisterOverflowError(reg_from)
-        if pos_to > ROM_SIZE:
-            raise ROMOutOfBoundsError(pos_to)
-        self.ram.save(pos_to, self.registers[reg_from])
-
-    def ram_load_register(self, reg_from, reg_to):
-        """RLR <reg_from> <reg_to>
-        Load the value from RAM position stored in `reg_from` into register `reg_to`."""
-        logger.debug(f"RLD {reg_from} {reg_to}")
-        if reg_to > MAX_REG:
-            raise RegisterOverflowError(reg_to)
-        if reg_from > MAX_REG:
-            raise RegisterOverflowError(reg_from)
-        self.registers[reg_to] = self.ram.load(self.registers[reg_from])
-
-    def ram_save_register(self, reg_from, reg_to):
-        """RSR <reg_from> <reg_to>
-        Save the value from register `reg_from` to RAM position stored in `reg_to`."""
-        logger.debug(f"RSV {reg_from} {reg_to}")
-        if reg_to > MAX_REG:
-            raise RegisterOverflowError(reg_to)
-        if reg_from > MAX_REG:
-            raise RegisterOverflowError(reg_from)
-        self.ram.save(self.registers[reg_to], self.registers[reg_from])
-
     @heavy
     def push(self, reg_from):
         """PSH <reg_from>
@@ -700,9 +644,9 @@ class CPU:
         logger.debug(f"PSH {reg_from}")
         if reg_from > MAX_REG:
             raise RegisterOverflowError(reg_from)
-        self.ram.save(self.registers[Registers.STACK], self.registers[reg_from])
-        self.registers[Registers.STACK] += 1
-        self.registers[Registers.STACK] %= STACK_SIZE
+        self.ram.save(self.registers[Registers.STCK], self.registers[reg_from])
+        self.registers[Registers.STCK] += 1
+        self.registers[Registers.STCK] %= STACK_SIZE
 
     @heavy
     def pop(self, reg_to):
@@ -711,9 +655,9 @@ class CPU:
         logger.debug(f"PSH {reg_to}")
         if reg_to > MAX_REG:
             raise RegisterOverflowError(reg_to)
-        self.registers[reg_to] = self.ram.load(self.registers[Registers.STACK])
-        self.registers[Registers.STACK] -= 1
-        self.registers[Registers.STACK] %= STACK_SIZE
+        self.registers[reg_to] = self.ram.load(self.registers[Registers.STCK])
+        self.registers[Registers.STCK] -= 1
+        self.registers[Registers.STCK] %= STACK_SIZE
 
     def halt(self):
         self._halt_flag = True
@@ -770,12 +714,16 @@ class CPU:
         # Make sure everything's uppercase, since we assume that a lot.
         s = s.upper()
 
+        # Fix legacy IMM
+        s = re.sub(r"IMM (.+)\n", "IMM \\1 0\n", s)
+
         # Store labels for later.
         labels = {}
         lines = s.split("\n")
         n = 0
         for line in lines:
             line = line.strip()
+
             # If we find a label definition, save it.
             if m := re.match(r"LABEL (.*)", line):
                 labels[m.group(1)] = n
@@ -806,23 +754,8 @@ class CPU:
                     instructions[n] = opcode.value
                     continue
                 # Register aliases
-                case "IMR":
-                    instructions[n] = Registers.IMR
-                    continue
-                case "IN":
-                    instructions[n] = Registers.IN
-                    continue
-                case "ADDR":
-                    instructions[n] = Registers.ADDR
-                    continue
-                case "DATA":
-                    instructions[n] = Registers.DATA
-                    continue
-                case "STACK":
-                    instructions[n] = Registers.STACK
-                    continue
-                case "OF":
-                    instructions[n] = Registers.OF
+                case x if x in [m.name for m in Registers]:
+                    instructions[n] = Registers[x]
                     continue
                 # Otherwise, is this a label?
                 case x:

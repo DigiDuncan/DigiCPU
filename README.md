@@ -6,10 +6,13 @@ A software-based very basic 8-bit CPU made in Python.
 
 Running the module will launch an [Arcade](https://api.arcade.academy/en/development/) window with eight seven-segment displays on it.
 
-Register 9 is an address bus for the display (1-8 is each digit, left to right.)  
-Register 10 is a data bus and sends that value to the display in register 9.  
-Register 11 is the stack pointer.  
-Register 12 is the overflow register.
+The CPU has the following registers:
+- General purpose registers `0...7`
+- Address/Data lines for the seven segment display on `8` and `9`
+- Address/Data lines for the RAM on `10` and `11`
+- Stack pointer `12`
+- Overflow register `13`
+- Input register `14`
 
 The CPU also has overflow, zero, and negative flags.
 
@@ -25,10 +28,9 @@ The CPU also has overflow, zero, and negative flags.
 | Canon Name                        | ASM   | OP7 (W1) | OP6 (W0) | OP5 (T2) | OP4 (T1) | OP3 (T0) | OP2 | OP1 | OP0 | Dec | Hex   | Width | Module      |
 |-----------------------------------|-------|----------|----------|----------|----------|----------|-----|-----|-----|-----|-------|-------|-------------|
 | No Operation                      | `NOP` | 0        | 0        | 0        | 0        | 0        | 0   | 0   | 0   | 0   | `00`  | 1     | Immediate   |
-| Immediate                         | `IMM` | 0        | 1        | 0        | 0        | 0        | 0   | 0   | 1   | 65  | `41`  | 2     | Immediate   |
+| Immediate                         | `IMM` | 1        | 0        | 0        | 0        | 0        | 0   | 0   | 1   | 129 | `81`  | 2     | Immediate   |
 | Halt                              | `HLT` | 0        | 0        | 0        | 0        | 0        | 1   | 1   | 1   | 7   | `07`  | 1     | Immediate   |
 | Copy                              | `CPY` | 1        | 0        | 0        | 1        | 0        | 0   | 0   | 1   | 145 | `91`  | 3     | Copy        |
-| Clear                             | `CLR` | 0        | 1        | 0        | 1        | 0        | 0   | 0   | 0   | 80  | `50`  | 2     | Copy        |
 | Clear Flags                       | `CLF` | 0        | 0        | 0        | 0        | 1        | 0   | 0   | 0   | 8   | `08`  | 1     | Flag        |
 | Clear Negative Flag               | `CNF` | 0        | 0        | 0        | 0        | 1        | 0   | 0   | 1   | 9   | `09`  | 1     | Flag        |
 | Clear Zero Flag                   | `CZF` | 0        | 0        | 0        | 0        | 1        | 0   | 1   | 0   | 10  | `0A`  | 1     | Flag        |
@@ -45,13 +47,13 @@ The CPU also has overflow, zero, and negative flags.
 | Conditional Not Equal             | `NEQ` | 1        | 1        | 1        | 1        | 0        | 1   | 0   | 1   | 245 | `F5`  | 4     | Conditional |
 | Conditional Greater Than Or Equal | `GTE` | 1        | 1        | 1        | 1        | 0        | 1   | 1   | 0   | 246 | `F6`  | 4     | Conditional |
 | Conditional Greater Than          | `GT`  | 1        | 1        | 1        | 1        | 0        | 1   | 1   | 1   | 247 | `F7`  | 4     | Conditional |
+| Jump                              | `JMP` | 0        | 1        | 1        | 1        | 0        | 0   | 0   | 1   | 113 | `71`  | 2     | Conditional |
 | Logical Nand                      | `NND` | 1        | 1        | 1        | 0        | 0        | 0   | 0   | 0   | 224 | `E0`  | 4     | Logic       |
 | Logical Or                        | `OR`  | 1        | 1        | 1        | 0        | 0        | 0   | 0   | 1   | 225 | `E1`  | 4     | Logic       |
 | Logical And                       | `AND` | 1        | 1        | 1        | 0        | 0        | 0   | 1   | 0   | 226 | `E2`  | 4     | Logic       |
 | Logical Nor                       | `NOR` | 1        | 1        | 1        | 0        | 0        | 0   | 1   | 1   | 227 | `E3`  | 4     | Logic       |
 | Logical Not                       | `NOT` | 1        | 0        | 1        | 0        | 0        | 1   | 0   | 0   | 164 | `A4`  | 3     | Logic       |
 | Logical Xor                       | `XOR` | 1        | 1        | 1        | 0        | 0        | 1   | 0   | 1   | 229 | `E5`  | 4     | Logic       |
-| Jump                              | `JMP` | 0        | 1        | 1        | 0        | 0        | 1   | 0   | 0   | 100 | `64`  | 2     | Logic       |
 | Jump from Register                | `JMR` | 0        | 1        | 1        | 0        | 0        | 1   | 0   | 1   | 101 | `65`  | 2     | Logic       |
 | Increment                         | `INC` | 0        | 1        | 1        | 0        | 1        | 0   | 0   | 0   | 104 | `68`  | 2     | Math        |
 | Decrement                         | `DEC` | 0        | 1        | 1        | 0        | 1        | 0   | 0   | 1   | 105 | `69`  | 2     | Math        |
@@ -63,10 +65,6 @@ The CPU also has overflow, zero, and negative flags.
 | Shift Right                       | `SHR` | 1        | 1        | 1        | 0        | 1        | 1   | 0   | 1   | 237 | `ED`  | 4     | Math        |
 | Minimum                           | `MIN` | 1        | 1        | 1        | 0        | 1        | 1   | 1   | 0   | 238 | `EE`  | 4     | Math        |
 | Maximum                           | `MAX` | 1        | 1        | 1        | 0        | 1        | 1   | 1   | 1   | 239 | `EF`  | 4     | Math        |
-| RAM Load                          | `RLD` | 1        | 0        | 0        | 1        | 1        | 0   | 0   | 0   | 152 | `98`  | 3     | RAM         |
-| RAM Save                          | `RSV` | 1        | 0        | 0        | 1        | 1        | 0   | 0   | 1   | 153 | `99`  | 3     | RAM         |
-| RAM Load from Register            | `RLR` | 1        | 0        | 0        | 1        | 1        | 0   | 1   | 0   | 154 | `9A`  | 3     | RAM         |
-| RAM Save from Register            | `RSR` | 1        | 0        | 0        | 1        | 1        | 0   | 1   | 1   | 155 | `9B`  | 3     | RAM         |
 | Push                              | `PSH` | 0        | 1        | 0        | 1        | 1        | 1   | 0   | 0   | 92  | `5C`  | 2     | RAM         |
 | Pop                               | `POP` | 0        | 1        | 0        | 1        | 1        | 1   | 0   | 1   | 93  | `5D`  | 2     | RAM         |
 | Int to Seven Segment              | `SEG` | 1        | 0        | 1        | 1        | 1        | 1   | 1   | 1   | 191 | `BF`  | 3     | Extensions  |
@@ -89,7 +87,6 @@ The CPU also has overflow, zero, and negative flags.
 | `111` | Extensions  |
 
 - `NOP` is all 0s.
-- `HLT` is `0x07`.
 
 ## Comments
 You can write a comment by starting your line with `#`. The assembler will ignore that line.
