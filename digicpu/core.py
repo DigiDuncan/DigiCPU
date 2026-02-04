@@ -1,5 +1,6 @@
 import importlib.resources as pkg_resources
 import logging
+import re
 
 import arcade
 from arcade.types import Color
@@ -34,6 +35,7 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 
 BG_COLOR = Color.from_uint24(0x1c7094)
+BG_DARK_COLOR = Color.from_uint24(0x638D9F)
 ACCENT_DARK_COLOR = Color.from_uint24(0x83CAE8)
 ACCENT_LIGHT_COLOR = Color.from_uint24(0xffb26b)
 TEXT_DIM_COLOR = Color.from_uint24(0xaaaaaa)
@@ -93,6 +95,10 @@ class DigiCPUWindow(arcade.Window):
         self.rom_doc = pyglet.text.document.FormattedDocument(rom)
         self.rom_doc.set_style(0, len(self.rom_doc.text), {"font_name": "Super Mario Bros. NES", "font_size": 12, "color": TEXT_DIM_COLOR})
         self.rom_text = pyglet.text.DocumentLabel(self.rom_doc, x = 5, y = -15, batch = self.text_batch, multiline = True, width = self.width, anchor_y = "bottom")
+
+        self.last_real_rom_byte = 0xFF
+        non_ops = [b for b in self.cpu.rom if b != 0]
+        self.last_real_rom_byte = len(self.cpu.rom) - self.cpu.rom[::-1].index(non_ops[-1]) - 1
 
         self.instruction_doc = pyglet.text.document.FormattedDocument("NOP")
         self.instruction_doc.set_style(0, len(self.instruction_doc.text), {"font_name": "Super Mario Bros. NES", "font_size": 24, "color": TEXT_COLOR})
@@ -168,6 +174,15 @@ class DigiCPUWindow(arcade.Window):
 
         self.rom_doc.set_style(idx, idx + span_width, {"color": TEXT_COLOR})
 
+        # NOP
+        line = (self.last_real_rom_byte + 1) // self.rom_text_width
+        col = (self.last_real_rom_byte + 1) % self.rom_text_width
+
+        idx = (self.rom_text_width * 2 * line) + (col * 2)
+
+        self.rom_doc.set_style(idx, len(self.rom_doc.text), {"color": BG_DARK_COLOR})
+
+        # INSTRUCTION
         self.instruction_doc.text = self.cpu._current_instruction
         self.instruction_doc.set_style(0, len(self.instruction_doc.text), {"color": TEXT_DIM_COLOR})
         idx = self.instruction_doc.text.index(" ")
