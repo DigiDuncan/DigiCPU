@@ -6,6 +6,7 @@ from digicpu.lib.errors import UnknownInstructionError
 from digicpu.lib.types import Registers
 from digicpu.lib.utils import make_int
 
+
 def compile(s: str, opcodes: list[Opcode]) -> list[int]:
     valid_opcodes = [o.assembly for o in opcodes]
     

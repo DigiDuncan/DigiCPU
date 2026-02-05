@@ -2,6 +2,7 @@ from functools import wraps
 from typing import Callable
 
 from digicpu.core.compiler import compile
+from digicpu.core.display import SevenSegmentDisplay
 from digicpu.core.opcode import Opcode
 from digicpu.core.ram import RAM
 from digicpu.lib.checks import check_arithmetic, check_logic
@@ -11,7 +12,6 @@ from digicpu.lib.log import logger
 from digicpu.lib.types import (MAX_INSTRUCTION_WIDTH, MAX_INT, MAX_REG,
                                RAM_SIZE, ROM_SIZE, STACK_SIZE, Register,
                                Registers)
-from digicpu.core.display import SevenSegmentDisplay
 
 
 # This is a decorator and shouldn't be invoked.

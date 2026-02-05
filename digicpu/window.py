@@ -1,18 +1,18 @@
 import importlib.resources as pkg_resources
 
 import arcade
-from arcade.types import LRBT
 import arrow
 import pyglet
+from arcade.types import LRBT
 from pyglet.graphics import Batch
 
 import digicpu.data.fonts
 import digicpu.data.programs
 from digicpu.constants import (ACCENT_DARK_COLOR, ACCENT_LIGHT_COLOR, BG_COLOR,
-                               BG_DARK_COLOR, SCREEN_HEIGHT, SCREEN_TITLE,
-                               SCREEN_WIDTH, TEXT_COLOR, TEXT_DIM_COLOR, BOX_COLOR)
+                               BG_DARK_COLOR, BOX_COLOR, SCREEN_HEIGHT,
+                               SCREEN_TITLE, SCREEN_WIDTH, TEXT_COLOR,
+                               TEXT_DIM_COLOR)
 from digicpu.core.cpu import CPU
-from digicpu.core.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
 
 PROGRAM = "new_test.asm"
