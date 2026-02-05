@@ -86,7 +86,8 @@ class CPU:
         self.zero_flag = False
         self.overflow_flag = False
 
-        self._current_instruction = ""
+        self._current_instruction = []
+        self._current_instruction_string = ""
 
     @property
     def valid_opcodes(self) -> list[str]:
@@ -624,7 +625,8 @@ class CPU:
                 self.ram.save(self.ram_address_register, self.ram_data_register)
 
             self._last_instruction_size = o.width
-            self._current_instruction = f"{o.assembly} {' '.join(f"{o:02X}" for o in operands[:o.width -1])}"
+            self._current_instruction = [o.value, *operands]
+            self._current_instruction_string = f"{o.assembly} {' '.join(f"{o:02X}" for o in operands[:o.width -1])}"
         if not found:
             raise UnknownOpcodeError(current_ins, self.program_counter)
 
