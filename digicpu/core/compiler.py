@@ -9,7 +9,7 @@ from digicpu.lib.utils import make_int
 def compile(s: str, opcodes: list[Opcode]) -> list[int]:
     valid_opcodes = [o.assembly for o in opcodes]
     
-    s = re.sub(r"#(.*)\n", "", s)  # comments
+    s = re.sub(r"#(.*)\n", "\n", s)  # comments
 
     # Deal with constants. It's not really an opcode, so it's not coded like one.
     replacements = {}
@@ -26,7 +26,7 @@ def compile(s: str, opcodes: list[Opcode]) -> list[int]:
     s = s.upper()
 
     # Fix legacy IMM
-    s = re.sub(r"IMM (.+)\n", "IMM \\1 0\n", s)
+    s = re.sub(r"IMM ([^\s]+)\n", "IMM \\1 0\n", s)
 
     # Store labels for later.
     labels = {}

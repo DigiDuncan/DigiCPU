@@ -15,6 +15,7 @@ from digicpu.core.cpu import CPU
 from digicpu.core.display import SevenSegmentDisplay
 from digicpu.lib.sevenseg import SevenSeg
 
+PROGRAM = "new_test.asm"
 
 class DigiCPUWindow(arcade.Window):
     def __init__(self, width, height, title, fps: float = 240.0):
@@ -36,7 +37,7 @@ class DigiCPUWindow(arcade.Window):
             d.center_y = self.height * 0.75
             d.left = ((d.width / 11) * (n + 1)) + (d.width * (n + 1))
 
-        t = pkg_resources.read_text(digicpu.data.programs, "program.asm")
+        t = pkg_resources.read_text(digicpu.data.programs, PROGRAM)
         self.cpu.load_string(t)
 
         self.tick: int = 0
@@ -100,6 +101,11 @@ class DigiCPUWindow(arcade.Window):
             self.tick_multiplier = new
         elif symbol == arcade.key.SPACE:
             self.paused = not self.paused
+        elif symbol == arcade.key.RIGHT and self.paused:
+            self.run_tick()
+        elif symbol == arcade.key.GRAVE:
+            with open("./dump.bin", "wb") as f:
+                f.write(bytes(self.cpu.rom))
 
         elif symbol == arcade.key.Z:
             self.input_value += 128
@@ -175,6 +181,9 @@ class DigiCPUWindow(arcade.Window):
         if self.paused:
             return
 
+        self.run_tick()
+
+    def run_tick(self):
         if not self.cpu._halt_flag:
             self.tick += 1
         if self.tick % self.tick_multiplier == 0:
