@@ -93,7 +93,6 @@ class DigiCPUWindow(arcade.Window):
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.R:
             self.cpu.reset()
-            self.output_display.reset()
             self.tick = 0
         elif symbol == arcade.key.NUM_ADD or symbol == arcade.key.EQUAL:
             new = max(self.tick_multiplier + 1, 1)
@@ -181,6 +180,7 @@ class DigiCPUWindow(arcade.Window):
         self.now = arrow.now()
 
         if self.paused:
+            self.tick_text.value = f"Tick: {self.tick} | PAUSED"
             return
 
         self.run_tick()
@@ -199,6 +199,7 @@ class DigiCPUWindow(arcade.Window):
             self.sprite_list.update()
 
         self.rate_text.value = f"Tick Rate: 1:{self.tick_multiplier}"
+        self.tick_text.value = f"Tick: {self.tick}"
         self.program_text.value = f"PC {self.cpu.program_counter:02X}"
         self.registers_text.text = " ".join([f"{r:02X}" for r in self.cpu.registers])
 

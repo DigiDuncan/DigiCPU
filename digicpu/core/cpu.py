@@ -683,6 +683,7 @@ class CPU:
         self.negative_flag = False
         self.overflow_flag = False
         self.zero_flag = False
+        self.display.reset()
 
     def input(self, value: int):
         """Set the input register to `value.`"""
