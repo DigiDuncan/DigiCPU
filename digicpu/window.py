@@ -44,7 +44,7 @@ class DigiCPUWindow(arcade.Window):
         self.tick_multiplier: int = 1
 
         self.input_value: int = 0
-        self.paused: bool = False
+        self.paused: bool = True
 
         self.text_batch: Batch = Batch()
 
@@ -87,6 +87,9 @@ class DigiCPUWindow(arcade.Window):
 
     def setup(self):
         ...
+
+    def on_show(self) -> None:
+        self.paused = False
 
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.R:
