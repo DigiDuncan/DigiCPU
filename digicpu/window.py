@@ -92,10 +92,10 @@ class DigiCPUWindow(arcade.Window):
             self.cpu.reset()
             self.output_display.reset()
             self.tick = 0
-        elif symbol == arcade.key.NUM_ADD:
+        elif symbol == arcade.key.NUM_ADD or symbol == arcade.key.EQUAL:
             new = max(self.tick_multiplier + 1, 1)
             self.tick_multiplier = new
-        elif symbol == arcade.key.NUM_SUBTRACT:
+        elif symbol == arcade.key.NUM_SUBTRACT or symbol == arcade.key.MINUS:
             new = max(self.tick_multiplier - 1, 1)
             self.tick_multiplier = new
         elif symbol == arcade.key.SPACE:
