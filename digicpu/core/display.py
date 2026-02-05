@@ -6,7 +6,7 @@ class SevenSegmentDisplay:
         self.digits = [0] * 8
 
     def update(self):
-        self.digits[self.address - 1] = self.data
+        self.digits[self.address] = self.data
 
     def reset(self):
         self.digits = [0] * 8
