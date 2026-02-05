@@ -36,7 +36,7 @@ def compile(s: str, opcodes: list[Opcode]) -> list[int]:
         line = line.strip()
 
         # If we find a label definition, save it.
-        if m := re.match(r"LABEL (.*)", line):
+        if m := re.match(r"LABEL ([^:]+):?", line):
             labels[m.group(1)] = n
         else:
             # Step over opcodes, since we know how wide they are.
