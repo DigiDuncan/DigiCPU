@@ -81,6 +81,7 @@ class CPU:
         self._just_jumped = False
         self._last_instruction_size = 0
         self._register_changed: int | None = None
+        self._ram_byte_changed: int | None = None
         self._halt_flag = False
 
         self.busy_flag = False  # Basically unimplemented -- some functions set it though
@@ -614,6 +615,7 @@ class CPU:
         one_operand = ["INC", "DEC"]
 
         register = None
+
         if opcode.value in [o.value for o in self.opcodes if o.assembly in three_operands]:
             register = operands[2]
         elif opcode.value in [o.value for o in self.opcodes if o.assembly in two_operands]:
@@ -624,6 +626,7 @@ class CPU:
         if register is not None:
             if register == Registers.RAMD:
                 self.ram.save(self.ram_address_register, self.ram_data_register)
+                self._ram_byte_changed = self.ram_address_register
             elif register == Registers.DATA:
                 self.display.address = self.address_register
                 self.display.data = self.data_register
@@ -673,7 +676,7 @@ class CPU:
         instructions = compile(s, self.opcodes)
         self.load(instructions)
 
-    def reset(self):
+    def reset(self, hard = False):
         """Clear the resgisters and start at the beginning of the program."""
         self.program_counter = 0
         self._halt_flag = False
@@ -684,6 +687,10 @@ class CPU:
         self.overflow_flag = False
         self.zero_flag = False
         self.display.reset()
+        
+        if hard:
+            self._ram_byte_changed = None
+            self.ram.write(0, [0] * RAM_SIZE)
 
     def input(self, value: int):
         """Set the input register to `value.`"""

@@ -15,7 +15,7 @@ from digicpu.constants import (ACCENT_DARK_COLOR, ACCENT_LIGHT_COLOR, BG_COLOR,
 from digicpu.core.cpu import CPU
 from digicpu.lib.sevenseg import SevenSeg
 
-PROGRAM = "new_test.asm"
+PROGRAM = "ramdom.asm"
 
 class DigiCPUWindow(arcade.Window):
     def __init__(self, width, height, title, fps: float = 240.0):
@@ -64,11 +64,19 @@ class DigiCPUWindow(arcade.Window):
             rom += f"{b:02X}"
             if i % self.rom_text_width == self.rom_text_width - 1:
                 rom += "\n"
-        rom.rstrip("\n")
+        rom = rom.rstrip("\n")
 
         self.rom_doc = pyglet.text.document.FormattedDocument(rom)
         self.rom_doc.set_style(0, len(self.rom_doc.text), {"font_name": "Super Mario Bros. NES", "font_size": 12, "color": TEXT_DIM_COLOR})
-        self.rom_text = pyglet.text.DocumentLabel(self.rom_doc, x = 5, y = -15, batch = self.text_batch, multiline = True, width = self.width, anchor_y = "bottom")
+        self.rom_text = pyglet.text.DocumentLabel(self.rom_doc, x = 5, y = 5, batch = self.text_batch, multiline = True, width = self.width, anchor_y = "bottom")
+
+        ram = ((("00" * 16) + "\n") * 16).rstrip("\n")
+
+        self.ram_doc = pyglet.text.document.FormattedDocument(ram)
+        self.ram_doc.set_style(0, len(self.ram_doc.text), {"font_name": "Super Mario Bros. NES", "font_size": 12, "color": BG_DARK_COLOR, "align": "right"})
+        self.ram_text = pyglet.text.DocumentLabel(self.ram_doc, x = self.width - 5, y = 5, batch = self.text_batch, multiline = True, width = self.width, anchor_y = "bottom", anchor_x = "right")
+
+        self.ram_bytes_used = set()
 
         self.last_real_rom_byte = 0xFF
         non_ops = [b for b in self.cpu.rom if b != 0]
@@ -92,7 +100,7 @@ class DigiCPUWindow(arcade.Window):
 
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.R:
-            self.cpu.reset()
+            self.cpu.reset(bool(modifiers & arcade.key.MOD_SHIFT))
             self.tick = 0
         elif symbol == arcade.key.NUM_ADD or symbol == arcade.key.EQUAL:
             new = max(self.tick_multiplier + 1, 1)
@@ -174,13 +182,39 @@ class DigiCPUWindow(arcade.Window):
             idx = self.cpu._register_changed * 3
             self.registers_doc.set_style(idx, idx + 2, {"color": TEXT_COLOR})
 
+        # RAM
+        ram = ""
+        for i, b in enumerate(self.cpu.ram.state):
+            ram += f"{b:02X}"
+            if i % self.rom_text_width == self.rom_text_width - 1:
+                ram += "\n"
+        ram = ram.rstrip("\n")
+        self.ram_text.text = ram
+        for b in self.cpu.ram.state:
+            if b not in self.ram_bytes_used:
+                self.ram_doc.set_style(b*2, b*2+2, {"color": BG_DARK_COLOR})
+            elif b == self.cpu._ram_byte_changed:
+                self.ram_doc.set_style(b*2, b*2+2, {"color": TEXT_COLOR})
+            else:
+                self.ram_doc.set_style(b*2, b*2+2, {"color": TEXT_DIM_COLOR})
 
     def on_update(self, delta_time):
         self.fps = round(1 / delta_time)
         self.now = arrow.now()
 
+        self.rate_text.value = f"Tick Rate: 1:{self.tick_multiplier}"
+        self.tick_text.value = f"Tick: {self.tick}"
+        self.program_text.value = f"PC {self.cpu.program_counter:02X}"
+        self.registers_text.text = " ".join([f"{r:02X}" for r in self.cpu.registers])
+
+        self.busy_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.busy_flag else ACCENT_DARK_COLOR
+        self.negative_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.negative_flag else ACCENT_DARK_COLOR
+        self.zero_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.zero_flag else ACCENT_DARK_COLOR
+        self.overflow_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.overflow_flag else ACCENT_DARK_COLOR
+
         if self.paused:
             self.tick_text.value = f"Tick: {self.tick} | PAUSED"
+            self.update_rom_text()
             return
 
         self.run_tick()
@@ -198,16 +232,7 @@ class DigiCPUWindow(arcade.Window):
 
             self.sprite_list.update()
 
-        self.rate_text.value = f"Tick Rate: 1:{self.tick_multiplier}"
-        self.tick_text.value = f"Tick: {self.tick}"
-        self.program_text.value = f"PC {self.cpu.program_counter:02X}"
-        self.registers_text.text = " ".join([f"{r:02X}" for r in self.cpu.registers])
-
-        self.busy_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.busy_flag else ACCENT_DARK_COLOR
-        self.negative_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.negative_flag else ACCENT_DARK_COLOR
-        self.zero_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.zero_flag else ACCENT_DARK_COLOR
-        self.overflow_flag_text.color = ACCENT_LIGHT_COLOR if self.cpu.overflow_flag else ACCENT_DARK_COLOR
-
+        self.ram_bytes_used.add(self.cpu._ram_byte_changed)
         self.update_rom_text()
 
     def on_draw(self):
