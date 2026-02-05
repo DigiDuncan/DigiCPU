@@ -11,6 +11,7 @@ from digicpu.lib.log import logger
 from digicpu.lib.types import (MAX_INSTRUCTION_WIDTH, MAX_INT, MAX_REG,
                                RAM_SIZE, ROM_SIZE, STACK_SIZE, Register,
                                Registers)
+from digicpu.core.display import SevenSegmentDisplay
 
 
 # This is a decorator and shouldn't be invoked.
@@ -29,6 +30,7 @@ class CPU:
         self.registers: list[int] = [0] * (MAX_REG + 1)
         self.rom: list[int] = [0] * ROM_SIZE
         self.ram: RAM = RAM(RAM_SIZE)
+        self.display = SevenSegmentDisplay()
 
         self.opcodes = [
             Opcode(0x00, "NOP"),
@@ -78,6 +80,7 @@ class CPU:
 
         self._just_jumped = False
         self._last_instruction_size = 0
+        self._register_changed: int | None = None
         self._halt_flag = False
 
         self.busy_flag = False  # Basically unimplemented -- some functions set it though
@@ -601,6 +604,33 @@ class CPU:
     def halt(self):
         self._halt_flag = True
 
+    def _handle(self, opcode: Opcode, operands: list[int]):
+        opcode.run(operands)
+
+        operands = operands[:opcode.width]
+
+        three_operands = ["AND", "OR", "NND", "NOR", "XOR", "ADD", "SUB", "MUL", "MOD", "SHL", "SHR", "MIN", "MAX", "ADO", "MLO"]
+        two_operands = ["NOT", "SEG", "IMM", "CPY"]
+        one_operand = ["INC", "DEC"]
+
+        register = None
+        if opcode.value in [o.value for o in self.opcodes if o.assembly in three_operands]:
+            register = operands[2]
+        elif opcode.value in [o.value for o in self.opcodes if o.assembly in two_operands]:
+            register = operands[1]
+        elif opcode.value in [o.value for o in self.opcodes if o.assembly in one_operand]:
+            register = operands[0]
+
+        if register is not None:
+            if register == Registers.RAMD:
+                self.ram.save(self.ram_address_register, self.ram_data_register)
+            elif register == Registers.DATA:
+                self.display.address = self.address_register
+                self.display.data = self.data_register
+                self.display.update()
+
+        self._register_changed = register
+
     def step(self):
         """Run one clock cycle. Just keep doing this until we're out of ROM."""
         # If we're halted, we're... halted.
@@ -618,11 +648,8 @@ class CPU:
             if o.value != current_ins:
                 continue
             found = True
-            o.run(operands)
 
-            # Handle RAM
-            if len(operands) == 2 and operands[1] == Registers.RAMD:
-                self.ram.save(self.ram_address_register, self.ram_data_register)
+            self._handle(o, operands)
 
             self._last_instruction_size = o.width
             self._current_instruction = [o.value, *operands]
