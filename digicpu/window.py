@@ -172,8 +172,17 @@ class DigiCPUWindow(arcade.Window):
 
         # REGISTERS
         self.registers_doc.set_style(0, idx, {"color": TEXT_DIM_COLOR})
-        if len(self.cpu._current_instruction) > 2 and self.cpu._current_instruction[0] in [0x81, 0x91]:
+        three_operands = ["AND", "OR", "NND", "NOR", "XOR", "ADD", "SUB", "MUL", "MOD", "SHL", "SHR", "MIN", "MAX", "ADO", "MLO"]
+        two_operands = ["NOT", "SEG", "IMM", "CPY"]
+        one_operand = ["INC", "DEC"]
+        if len(self.cpu._current_instruction) > 3 and self.cpu._current_instruction[0] in [o.value for o in self.cpu.opcodes if o.assembly in three_operands]:
+            idx = self.cpu._current_instruction[3] * 3
+            self.registers_doc.set_style(idx, idx + 2, {"color": TEXT_COLOR})
+        if len(self.cpu._current_instruction) > 2 and self.cpu._current_instruction[0] in [o.value for o in self.cpu.opcodes if o.assembly in two_operands]:
             idx = self.cpu._current_instruction[2] * 3
+            self.registers_doc.set_style(idx, idx + 2, {"color": TEXT_COLOR})
+        if len(self.cpu._current_instruction) > 1 and self.cpu._current_instruction[0] in [o.value for o in self.cpu.opcodes if o.assembly in one_operand]:
+            idx = self.cpu._current_instruction[1] * 3
             self.registers_doc.set_style(idx, idx + 2, {"color": TEXT_COLOR})
 
 
