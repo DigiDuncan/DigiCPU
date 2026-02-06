@@ -2,8 +2,9 @@ import re
 from typing import cast
 
 from digicpu.core.opcode import Opcode
-from digicpu.lib.errors import UnknownInstructionError, ROMTooLargeError, InvalidAssemblyError
-from digicpu.lib.types import Registers, ROM_SIZE
+from digicpu.lib.errors import (InvalidAssemblyError, ROMTooLargeError,
+                                UnknownInstructionError)
+from digicpu.lib.types import ROM_SIZE, Registers
 from digicpu.lib.utils import make_int
 
 

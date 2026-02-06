@@ -1,8 +1,8 @@
 import importlib.resources as pkg_resources
+import logging
 
 import arcade
 import arrow
-import logging
 import pyglet
 from arcade.types import LRBT
 from pyglet.graphics import Batch
@@ -14,8 +14,8 @@ from digicpu.constants import (ACCENT_DARK_COLOR, ACCENT_LIGHT_COLOR, BG_COLOR,
                                SCREEN_TITLE, SCREEN_WIDTH, TEXT_COLOR,
                                TEXT_DIM_COLOR)
 from digicpu.core.cpu import CPU
-from digicpu.lib.sevenseg import SevenSeg
 from digicpu.lib.log import logger
+from digicpu.lib.sevenseg import SevenSeg
 
 PROGRAM = "ramdom.asm"
 
