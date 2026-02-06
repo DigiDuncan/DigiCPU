@@ -153,6 +153,13 @@ class CPU:
     def ram_data_register(self, v):
         self.registers[Registers.RAMD] = v
 
+    # Stubbed to get get the opcodes to work
+    def push(self, *args):
+        raise NotImplementedError("Todo")
+
+    def pop(self, *args):
+        raise NotImplementedError("Todo")
+
     def copy(self, reg_from: Register, reg_to: Register):
         """CPY <from> <to>
         Copy the value from register `from` to register `to`."""
@@ -673,7 +680,7 @@ class CPU:
         self.overflow_flag = False
         self.zero_flag = False
         self.display.reset()
-        
+
         if hard:
             self._ram_byte_changed = None
             self.ram.write(0, [0] * RAM_SIZE)
