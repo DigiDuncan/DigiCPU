@@ -45,7 +45,7 @@ tests = []
 
 
 [tool.pyright]
-include = ["better_sum", "tests/helpers"]
+include = ["digicpu", "tests/helpers"]
 exclude = [
     ".venv*",
     ".scratch",
