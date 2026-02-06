@@ -60,7 +60,7 @@ class CPU:
             Opcode(0xA4, "NOT", self.logical_not),
             Opcode(0xE5, "XOR", self.logical_xor),
             Opcode(0x71, "JMP", self.jump),
-            Opcode(0x65, "JMR", self.jump_register),
+            Opcode(0x75, "JMR", self.jump_register),
             Opcode(0x68, "INC", self.increment),
             Opcode(0x69, "DEC", self.decrement),
             Opcode(0xE8, "ADD", self.add),

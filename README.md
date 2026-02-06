@@ -48,13 +48,13 @@ The CPU also has overflow, zero, and negative flags.
 | Conditional Greater Than Or Equal | `GTE` | 1        | 1        | 1        | 1        | 0        | 1   | 1   | 0   | 246 | `F6`  | 4     | Conditional |
 | Conditional Greater Than          | `GT`  | 1        | 1        | 1        | 1        | 0        | 1   | 1   | 1   | 247 | `F7`  | 4     | Conditional |
 | Jump                              | `JMP` | 0        | 1        | 1        | 1        | 0        | 0   | 0   | 1   | 113 | `71`  | 2     | Conditional |
+| Jump from Register                | `JMR` | 0        | 1        | 1        | 0        | 0        | 1   | 0   | 1   | 117 | `75`  | 2     | Logic       |
 | Logical Nand                      | `NND` | 1        | 1        | 1        | 0        | 0        | 0   | 0   | 0   | 224 | `E0`  | 4     | Logic       |
 | Logical Or                        | `OR`  | 1        | 1        | 1        | 0        | 0        | 0   | 0   | 1   | 225 | `E1`  | 4     | Logic       |
 | Logical And                       | `AND` | 1        | 1        | 1        | 0        | 0        | 0   | 1   | 0   | 226 | `E2`  | 4     | Logic       |
 | Logical Nor                       | `NOR` | 1        | 1        | 1        | 0        | 0        | 0   | 1   | 1   | 227 | `E3`  | 4     | Logic       |
 | Logical Not                       | `NOT` | 1        | 0        | 1        | 0        | 0        | 1   | 0   | 0   | 164 | `A4`  | 3     | Logic       |
 | Logical Xor                       | `XOR` | 1        | 1        | 1        | 0        | 0        | 1   | 0   | 1   | 229 | `E5`  | 4     | Logic       |
-| Jump from Register                | `JMR` | 0        | 1        | 1        | 0        | 0        | 1   | 0   | 1   | 101 | `65`  | 2     | Logic       |
 | Increment                         | `INC` | 0        | 1        | 1        | 0        | 1        | 0   | 0   | 0   | 104 | `68`  | 2     | Math        |
 | Decrement                         | `DEC` | 0        | 1        | 1        | 0        | 1        | 0   | 0   | 1   | 105 | `69`  | 2     | Math        |
 | Add                               | `ADD` | 1        | 1        | 1        | 0        | 1        | 0   | 0   | 0   | 232 | `E8`  | 4     | Math        |
