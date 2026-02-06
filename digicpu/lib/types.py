@@ -23,6 +23,6 @@ class Registers(IntEnum):
     DATA = 9
     RAMA = 10
     RAMD = 11
-    STCK = 12
+    STAK = 12
     OVFL = 13
     INPT = 14

@@ -2,7 +2,7 @@ import re
 from typing import cast
 
 from digicpu.core.opcode import Opcode
-from digicpu.lib.errors import UnknownInstructionError, ROMTooLargeError
+from digicpu.lib.errors import UnknownInstructionError, ROMTooLargeError, InvalidAssemblyError
 from digicpu.lib.types import Registers, ROM_SIZE
 from digicpu.lib.utils import make_int
 
@@ -55,6 +55,9 @@ def assemble(s: str, opcodes: list[Opcode]) -> list[int]:
     # Constants, too.
     s = re.sub(r"CONST (.*)\n", "", s)
 
+    # PSH and POP macros
+    
+
     # No newlines.
     s = s.replace("\n", " ")
 
@@ -62,6 +65,20 @@ def assemble(s: str, opcodes: list[Opcode]) -> list[int]:
     instructions = s.split()
     instructions = [i.strip().upper() for i in instructions]
     instructions = cast(list[str | int], instructions)
+
+    idx_to_pop = []
+    for n, i in enumerate(instructions):
+        if isinstance(i, str) and (i.startswith("+") or i.startswith("-")):
+            number = make_int(i[1:])
+            if i.startswith("-"):
+                number = -number
+            if isinstance(instructions[n - 1], int):
+                instructions[n - 1] += number  # type:ignore
+            else:
+                raise InvalidAssemblyError(f"Dangling address modifier \"{i}\"!")
+            idx_to_pop.append(n)
+    for idx in idx_to_pop:
+        instructions.pop(idx)
 
     # Step through these instructions.
     for n, i in enumerate(instructions):

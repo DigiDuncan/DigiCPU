@@ -123,11 +123,11 @@ class CPU:
 
     @property
     def stack_register(self) -> int:
-        return self.registers[Registers.STCK]
+        return self.registers[Registers.STAK]
 
     @stack_register.setter
     def stack_register(self, v):
-        self.registers[Registers.STCK] = v
+        self.registers[Registers.STAK] = v
 
     @property
     def overflow_register(self) -> int:
@@ -580,28 +580,6 @@ class CPU:
             case 88 | 120:
                 self.registers[reg_to] = 0
 
-    @heavy
-    def push(self, reg_from):
-        """PSH <reg_from>
-        Push the value from `reg_from` to the stack."""
-        logger.debug(f"PSH {reg_from}")
-        if reg_from > MAX_REG:
-            raise RegisterOverflowError(reg_from)
-        self.ram.save(self.registers[Registers.STCK], self.registers[reg_from])
-        self.registers[Registers.STCK] += 1
-        self.registers[Registers.STCK] %= STACK_SIZE
-
-    @heavy
-    def pop(self, reg_to):
-        """POP <reg_to>
-        Pop the value from from the stack into register `reg_to`."""
-        logger.debug(f"PSH {reg_to}")
-        if reg_to > MAX_REG:
-            raise RegisterOverflowError(reg_to)
-        self.registers[reg_to] = self.ram.load(self.registers[Registers.STCK])
-        self.registers[Registers.STCK] -= 1
-        self.registers[Registers.STCK] %= STACK_SIZE
-
     def halt(self):
         self._halt_flag = True
 
@@ -637,6 +615,8 @@ class CPU:
                 self.data_register = self.display.digits[self.address_register]
             elif register == Registers.RAMA:
                 self.ram_data_register = self.ram.load(self.ram_address_register)
+            elif register == Registers.STAK:
+                self.ram_data_register = self.ram.load(self.stack_register)
 
         self._register_changed = register
 

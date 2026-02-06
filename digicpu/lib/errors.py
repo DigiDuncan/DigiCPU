@@ -28,6 +28,10 @@ class UnknownInstructionError(ValueError):
     def __init__(self, instruction: str) -> None:
         super().__init__(f"Unknown instruction '{instruction}'!")
 
+class InvalidAssemblyError(ValueError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
 class ROMTooLargeError(ValueError):
     def __init__(self, size: int) -> None:
         super().__init__(f"Assembled ROM too large! ({size} > {ROM_SIZE})")

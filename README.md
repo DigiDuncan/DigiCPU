@@ -16,6 +16,8 @@ The CPU has the following registers:
 
 The CPU also has overflow, zero, and negative flags.
 
+The first two "rows" of RAM (`0x00`-`0x1F`) are reserved. `0x00`-`0x0F` are the stack, `0x10`-`0x1F` are internal use.
+
 ## Controls
 - `R`: Reset the CPU.
 - `[SPACE]` Pause the CPU.
