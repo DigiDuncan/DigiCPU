@@ -2,8 +2,8 @@ import re
 from typing import cast
 
 from digicpu.core.opcode import Opcode
-from digicpu.lib.errors import UnknownInstructionError
-from digicpu.lib.types import Registers
+from digicpu.lib.errors import UnknownInstructionError, ROMTooLargeError
+from digicpu.lib.types import Registers, ROM_SIZE
 from digicpu.lib.utils import make_int
 
 
@@ -11,6 +11,7 @@ def compile(s: str, opcodes: list[Opcode]) -> list[int]:
     valid_opcodes = [o.assembly for o in opcodes]
     
     s = re.sub(r"#(.*)\n", "\n", s)  # comments
+    s = s.replace("...", "NOP") # ... is a macro for NOP
 
     # Deal with constants. It's not really an opcode, so it's not coded like one.
     replacements = {}
@@ -25,6 +26,9 @@ def compile(s: str, opcodes: list[Opcode]) -> list[int]:
 
     # Make sure everything's uppercase, since we assume that a lot.
     s = s.upper()
+
+    # Replace semis with newlines for one-liners
+    s = s.replace(";", "\n")
 
     # Fix legacy IMM
     s = re.sub(r"IMM ([^\s]+)\n", "IMM \\1 0\n", s)
@@ -48,6 +52,8 @@ def compile(s: str, opcodes: list[Opcode]) -> list[int]:
 
     # Replace all labels with nothing, since we dealt with them.
     s = re.sub(r"LABEL (.*)\n", "", s)
+    # Constants, too.
+    s = re.sub(r"CONST (.*)\n", "", s)
 
     # No newlines.
     s = s.replace("\n", " ")
@@ -84,4 +90,8 @@ def compile(s: str, opcodes: list[Opcode]) -> list[int]:
             raise UnknownInstructionError(i)
 
     instructions = cast(list[int], instructions)
+
+    if len(instructions) > ROM_SIZE:
+        ROMTooLargeError(len(instructions))
+
     return instructions

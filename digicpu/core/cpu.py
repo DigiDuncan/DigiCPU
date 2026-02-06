@@ -624,6 +624,7 @@ class CPU:
             register = operands[0]
 
         if register is not None:
+            # SAVE
             if register == Registers.RAMD:
                 self.ram.save(self.ram_address_register, self.ram_data_register)
                 self._ram_byte_changed = self.ram_address_register
@@ -631,6 +632,11 @@ class CPU:
                 self.display.address = self.address_register
                 self.display.data = self.data_register
                 self.display.update()
+            # LOAD
+            elif register == Registers.ADDR:
+                self.data_register = self.display.digits[self.address_register]
+            elif register == Registers.RAMA:
+                self.ram_data_register = self.ram.load(self.ram_address_register)
 
         self._register_changed = register
 
