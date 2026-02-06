@@ -32,7 +32,7 @@ classifiers=[
         "Programming Language :: Python :: 3.14",
 ]
 [project.scripts]
-digicpu = "digicpu.core:main"
+digicpu = "digicpu.window:main"
 
 [project.urls]
 Homepage = "https://github.com/DigiDuncan/DigiCPU"
@@ -45,7 +45,7 @@ tests = []
 
 
 [tool.pyright]
-include = ["better_sum", "tests/helpers"]
+include = ["digicpu", "tests/helpers"]
 exclude = [
     ".venv*",
     ".scratch",
