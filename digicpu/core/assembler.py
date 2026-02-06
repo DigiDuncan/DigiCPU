@@ -7,7 +7,7 @@ from digicpu.lib.types import Registers, ROM_SIZE
 from digicpu.lib.utils import make_int
 
 
-def compile(s: str, opcodes: list[Opcode]) -> list[int]:
+def assemble(s: str, opcodes: list[Opcode]) -> list[int]:
     valid_opcodes = [o.assembly for o in opcodes]
     
     s = re.sub(r"#(.*)\n", "\n", s)  # comments

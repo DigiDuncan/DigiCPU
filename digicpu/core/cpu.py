@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Callable
 
-from digicpu.core.compiler import compile
+from digicpu.core.assembler import assemble
 from digicpu.core.display import SevenSegmentDisplay
 from digicpu.core.opcode import Opcode
 from digicpu.core.ram import RAM
@@ -679,7 +679,7 @@ class CPU:
 
     def load_string(self, s: str):
         """Load an assembly program from string."""
-        instructions = compile(s, self.opcodes)
+        instructions = assemble(s, self.opcodes)
         self.load(instructions)
 
     def reset(self, hard = False):
