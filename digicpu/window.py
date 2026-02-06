@@ -2,6 +2,7 @@ import importlib.resources as pkg_resources
 
 import arcade
 import arrow
+import logging
 import pyglet
 from arcade.types import LRBT
 from pyglet.graphics import Batch
@@ -14,12 +15,13 @@ from digicpu.constants import (ACCENT_DARK_COLOR, ACCENT_LIGHT_COLOR, BG_COLOR,
                                TEXT_DIM_COLOR)
 from digicpu.core.cpu import CPU
 from digicpu.lib.sevenseg import SevenSeg
+from digicpu.lib.log import logger
 
 PROGRAM = "ramdom.asm"
 
 class DigiCPUWindow(arcade.Window):
-    def __init__(self, width, height, title, fps: float = 240.0):
-        super().__init__(width, height, title, update_rate = 1 / fps)
+    def __init__(self, width, height, title, fps: float = 600.0):
+        super().__init__(width, height, title, update_rate = 1 / fps, draw_rate = 1 / fps)
         self.fps: float = fps
 
         self.now = arrow.now()
@@ -204,6 +206,7 @@ class DigiCPUWindow(arcade.Window):
 
         self.rate_text.value = f"Tick Rate: 1:{self.tick_multiplier}"
         self.tick_text.value = f"Tick: {self.tick}"
+        self.fps_text.value = f"FPS {self.fps}"
         self.program_text.value = f"PC {self.cpu.program_counter:02X}"
         self.registers_text.text = " ".join([f"{r:02X}" for r in self.cpu.registers])
 
@@ -247,6 +250,7 @@ def main():
     with pkg_resources.path(digicpu.data.fonts, "FIRACODE.ttf") as p:
         arcade.load_font(p)
 
+    logger.setLevel(logging.INFO)
     window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     window.setup()
     arcade.run()
