@@ -57,6 +57,14 @@ class SevenSeg(arcade.Sprite):
         self._sprite_list = arcade.SpriteList()
         self._sprite_list.append(self)
 
+        self.points_a = get_segment_point_list(False, self.segment_length, self.segment_thickness, self.segment_thickness // 2 + self.segment_gap, self.height - self.segment_thickness)
+        self.points_b = get_segment_point_list(True, self.segment_length, self.segment_thickness, self.digit_width - self.segment_thickness, self.height - self.segment_length - self.segment_gap - (self.segment_thickness // 2))
+        self.points_c = get_segment_point_list(True, self.segment_length, self.segment_thickness, self.digit_width - self.segment_thickness, self.segment_gap + (self.segment_thickness // 2))
+        self.points_d = get_segment_point_list(False, self.segment_length, self.segment_thickness, self.segment_thickness // 2 + self.segment_gap, 0)
+        self.points_e = get_segment_point_list(True, self.segment_length, self.segment_thickness, 0, self.segment_gap + (self.segment_thickness // 2))
+        self.points_f = get_segment_point_list(True, self.segment_length, self.segment_thickness, 0, self.height - self.segment_length - self.segment_gap - (self.segment_thickness // 2))
+        self.points_g = get_segment_point_list(False, self.segment_length, self.segment_thickness, self.segment_thickness // 2 + self.segment_gap, self.segment_length + (self.segment_gap * 2))
+
     @property
     def current_state(self) -> tuple:
         return tuple(self.segments) + (self.off_color, self.on_color)
@@ -127,7 +135,7 @@ class SevenSeg(arcade.Sprite):
 
     def segment_color(self, segment: int):
         if segment > 7:
-            return ValueError("Segment must 0-7.")
+            raise ValueError("Segment must 0-7.")
         return self.on_color if self.segments[segment] else self.off_color
 
     def set_bits(self, bits: int):
@@ -210,21 +218,14 @@ class SevenSeg(arcade.Sprite):
             return
         with self._sprite_list.atlas.render_into(self._tex) as fbo:
             fbo.clear()
-            points_a = get_segment_point_list(False, self.segment_length, self.segment_thickness, self.segment_thickness // 2 + self.segment_gap, self.height - self.segment_thickness)
-            arcade.draw_polygon_filled(points_a, self.segment_color(0))
-            points_b = get_segment_point_list(True, self.segment_length, self.segment_thickness, self.digit_width - self.segment_thickness, self.height - self.segment_length - self.segment_gap - (self.segment_thickness // 2))
-            arcade.draw_polygon_filled(points_b, self.segment_color(1))
-            points_c = get_segment_point_list(True, self.segment_length, self.segment_thickness, self.digit_width - self.segment_thickness, self.segment_gap + (self.segment_thickness // 2))
-            arcade.draw_polygon_filled(points_c, self.segment_color(2))
-            points_d = get_segment_point_list(False, self.segment_length, self.segment_thickness, self.segment_thickness // 2 + self.segment_gap, 0)
-            arcade.draw_polygon_filled(points_d, self.segment_color(3))
-            points_e = get_segment_point_list(True, self.segment_length, self.segment_thickness, 0, self.segment_gap + (self.segment_thickness // 2))
-            arcade.draw_polygon_filled(points_e, self.segment_color(4))
-            points_f = get_segment_point_list(True, self.segment_length, self.segment_thickness, 0, self.height - self.segment_length - self.segment_gap - (self.segment_thickness // 2))
-            arcade.draw_polygon_filled(points_f, self.segment_color(5))
-            points_g = get_segment_point_list(False, self.segment_length, self.segment_thickness, self.segment_thickness // 2 + self.segment_gap, self.segment_length + (self.segment_gap * 2))
-            arcade.draw_polygon_filled(points_g, self.segment_color(6))
-            arcade.draw_circle_filled(self._w - self.circle_size, self.circle_size // 2, self.circle_size // 2, self.segment_color(7))
+            arcade.draw_polygon_filled(self.points_a, self.segment_color(0))
+            arcade.draw_polygon_filled(self.points_b, self.segment_color(1))
+            arcade.draw_polygon_filled(self.points_c, self.segment_color(2))
+            arcade.draw_polygon_filled(self.points_d, self.segment_color(3))
+            arcade.draw_polygon_filled(self.points_e, self.segment_color(4))
+            arcade.draw_polygon_filled(self.points_f, self.segment_color(5))
+            arcade.draw_polygon_filled(self.points_g, self.segment_color(6))
+            arcade.draw_circle_filled(self._w - self.circle_size, self.circle_size // 2, self.circle_size // 2, self.segment_color(7), num_segments = 16)
         self.last_state = self.current_state
         super().update(*args, **kwargs)
 
