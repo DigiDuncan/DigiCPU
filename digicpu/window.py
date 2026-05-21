@@ -27,7 +27,6 @@ from digicpu.lib.log import logger
 from digicpu.lib.sevenseg import SevenSeg
 
 
-
 class DigiCPUWindow(arcade.Window):
 
     def __init__(self, width, height, title, source: str = "", fps: float = 600.0):
@@ -255,9 +254,9 @@ class DigiCPUWindow(arcade.Window):
 
 
 class RunActions(StrEnum):
-    """Subcommands supported by DigiCPU"""
+    """Commands supported by DigiCPU"""
 
-    # Each docstrings below becomes help text for its argparse subcommand.
+    # Each docstring below becomes help text for its argparse subcommand.
     RUN_EXTERNAL  = 'run'
     """Run external code from source or stdin via (-)"""
 
@@ -269,7 +268,7 @@ class RunActions(StrEnum):
 
 
 def build_default_arg_parser() -> argparse.ArgumentParser:
-    """Build an argument parser."""
+    """Build a default argument parser."""
 
     parser = argparse.ArgumentParser(prog=__file__)
     subparsers = parser.add_subparsers(dest='action')
@@ -279,7 +278,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         action_docstring = getattr(action, '__doc__', None)
         help_text=kwargs.get('help', action_docstring)
 
-        plain_action: str = action.value
+        plain_action: str = action
         return subparsers.add_parser(
             plain_action, *args, help=help_text, **kwargs)
 
@@ -287,6 +286,9 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
     # to run DigiCPU code
     run_external = _build_subparser(RunActions.RUN_EXTERNAL)
     run_external.add_argument(
+        # TODO: find a non-deprecated alternative for argparse.FileType
+        # There's plenty of time since it only got deprecated in Python 3.14:
+        # https://docs.python.org/3/library/argparse.html#filetype-objects
         "file", type=argparse.FileType(mode='r', encoding='UTF-8'),
         help="Either a path to a DigiCPU .asm file or - to pipe from stdin"
     )
@@ -316,7 +318,7 @@ def preload_font(
     font: str,
     fonts_module: ModuleType = digicpu.data.fonts
 ) -> None:
-    """Preloads a single font from the fonts_module.
+    """Preloads one font from the given fonts_module.
 
     Arguments:
         font: A font name in the fonts_module.
@@ -329,7 +331,7 @@ def preload_font(
 def run_digicpu(
     source: str,
     fonts: Sequence[str] = DEFAULT_FONTS
-):
+) -> None:
     for font in fonts:
         preload_font(font)
 
@@ -376,7 +378,6 @@ def print_only_asm_files(
 
     Arguments:
         files: a list or tuple of files.
-
     """
     for path in (Path(p) for p in files):
         # path.suffix returns only the last stuffix (.gz from .tar.gz)
@@ -389,30 +390,55 @@ def print_only_asm_files(
             print(path.name)
 
 
+# exit() in functions can get weird. this is simpler
+def _report_file_not_found_and_get_exit_code(msg: str) -> int:
+    logger.error(msg)
+    import errno
+    # Instead, we getattr b/c ENOENT won't exist on some platforms
+    # https://docs.python.org/3/library/errno.html#errno.ENOENT
+    _ENOENT = getattr(errno, 'ENOENT', 2)
+
+    return _ENOENT
+
+
 def main(
     argv: Sequence[str] | None = None,
     argument_parser: argparse.ArgumentParser = DEFAULT_ARGUMENT_PARSER
 ):
-    args = argument_parser.parse_args(args=argv)
+    try:
+        args = argument_parser.parse_args(args=argv)
+    except FileNotFoundError as e:
+        print(repr(e), dir(e))
+        exit(_report_file_not_found_and_get_exit_code(
+            str(e)))
+
 
     logger.setLevel(logging.INFO)
 
-    examples = digicpu.data.programs
     action = args.action
 
     source: str | None = None
     match action:
         case RunActions.LIST_EXAMPLES:
-            files = get_example_files(examples)
+            files = get_example_files()
             show_full_path = args.show_full_path
             print_only_asm_files(
                 files=files, show_full_path=show_full_path)
             return
+
         case RunActions.RUN_EXTERNAL:
             source = args.file.read()
+
         case RunActions.RUN_EXAMPLE:
             name = args.name
-            source = pkg_resources.read_text(examples, name)
+            # Name before = no ugly argparse tricks
+            with pkg_resources.path(digicpu.data.programs, name) as p:
+                if p.is_file():
+                    source = p.read_text()
+                else:
+                    exit(_report_file_not_found_and_get_exit_code(
+                        f"{str(p)!r} not found"))
+
         case _:
             raise NotImplementedError(
                 f"{action=!r} either not yet implemented, or something is wrong.")
