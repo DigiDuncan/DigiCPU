@@ -5,7 +5,10 @@ import sys
 
 from enum import StrEnum
 import importlib.resources as pkg_resources
+from pathlib import Path
 from typing import Sequence
+from types import ModuleType
+
 
 import arcade
 import arrow
@@ -251,79 +254,167 @@ class DigiCPUWindow(arcade.Window):
         self.text_batch.draw()
 
 
-
-def do_all_init(source_asm: str | None = None) -> DigiCPUWindow:
-    with pkg_resources.path(digicpu.data.fonts, "NES.ttf") as p:
-        arcade.load_font(p)
-    with pkg_resources.path(digicpu.data.fonts, "FIRACODE.ttf") as p:
-        arcade.load_font(p)
-    _window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, source=source_asm)
-    _window.setup()
-
-    return _window
-
-
 class RunActions(StrEnum):
-    """An subcommand action."""
+    """Subcommands supported by DigiCPU"""
 
+    # Each docstrings below becomes help text for its argparse subcommand.
     RUN_EXTERNAL  = 'run'
-    """Run an external file."""
+    """Run external code from source or stdin via (-)"""
 
     RUN_EXAMPLE   = 'run-example'
-    """Run a built-in example."""
+    """Run a built-in example from digicpu.data.programs"""
 
-    LIST_EXAMPLES = 'list-example'
-    """List all built-in examples."""
+    LIST_EXAMPLES = 'list-examples'
+    """List all built-in examples in digicpu.data.programs"""
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_default_arg_parser() -> argparse.ArgumentParser:
+    """Build an argument parser."""
 
     parser = argparse.ArgumentParser(prog=__file__)
     subparsers = parser.add_subparsers(dest='action')
-    def _build_subparser(action: str, *args, **kwargs):
+
+    def _build_subparser(action: StrEnum, *args, **kwargs):
+        # Use docstring if it exists, the help="keyword argument", or None
+        action_docstring = getattr(action, '__doc__', None)
+        help_text=kwargs.get('help', action_docstring)
+
+        plain_action: str = action.value
         return subparsers.add_parser(
-            action.value,
-            *args,
-            **kwargs)
+            plain_action, *args, help=help_text, **kwargs)
 
     # stdin support is a fast, lazy way for VS Code and vim
     # to run DigiCPU code
-    run_external = _build_subparser(
-        RunActions.RUN_EXTERNAL, help="Run an external source file")
+    run_external = _build_subparser(RunActions.RUN_EXTERNAL)
     run_external.add_argument(
         "file", type=argparse.FileType(mode='r', encoding='UTF-8'),
-        help="Either a path to a DigiCPU .asm file or - to pipe from stdin")
+        help="Either a path to a DigiCPU .asm file or - to pipe from stdin"
+    )
 
-    run_example = _build_subparser(
-        RunActions.RUN_EXAMPLE, help="Run a build-in example file")
+    run_example = _build_subparser(RunActions.RUN_EXAMPLE)
     run_example.add_argument(
         "name", type=str,
         help="The name of an example file (see list-examples")
 
+    list_examples = _build_subparser(RunActions.LIST_EXAMPLES)
+    list_examples.add_argument(
+        "--show-full-path", action="store_true", default=False,
+        help="Show the full path of the file instead of its filename."""
+    )
+
     return parser
 
 
-_DEFAULT_PARSER = build_parser()
+DEFAULT_ARGUMENT_PARSER = build_default_arg_parser()
+DEFAULT_FONTS: tuple[str, ...] = (
+    'NES.ttf',
+    'FIRACODE.ttf'
+)
 
+
+def preload_font(
+    font: str,
+    fonts_module: ModuleType = digicpu.data.fonts
+) -> None:
+    """Preloads a single font from the fonts_module.
+
+    Arguments:
+        font: A font name in the fonts_module.
+        fonts_module: A module to preload fonts from.
+    """
+    with pkg_resources.path(fonts_module, font) as font_path:
+        arcade.load_font(font_path)
+
+
+def run_digicpu(
+    source: str,
+    fonts: Sequence[str] = DEFAULT_FONTS
+):
+    for font in fonts:
+        preload_font(font)
+
+    window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, source=source)
+    window.setup()
+
+    arcade.run()
+
+
+def get_example_files(
+    examples_module: ModuleType = digicpu.data.programs,
+    exclude_dirs: bool = True
+) -> list[Path]:
+    """Get a list of Path objects for each file in the examples_module.
+
+    Directories are excluded, but Python (.py) files are not.
+
+    Arguments:
+        examples_module: A project module to search for files in.
+    Returns:
+        An unfiltered list of files in the module (may contain .py).
+    """
+    module_dir = pkg_resources.files(examples_module)
+    dir_iterator = module_dir.iterdir()
+    if exclude_dirs:
+        examples = [f for f in dir_iterator if f.is_file()]
+        return examples
+    else:
+        return list(dir_iterator)
+
+
+def print_only_asm_files(
+    files: Sequence[Path | str],
+    show_full_path: bool = False
+) -> None:
+    """Prints all .asm files, excluding second extensions.
+
+    ```Python
+    >>> names = ['tricky.asm.broken', 'sdgsfga.asm.temp', 'circles.asm']
+    >>> print_only_asm_files(names, extension=".asm")
+    ... circles.asm
+    >>>
+    ```
+
+    Arguments:
+        files: a list or tuple of files.
+
+    """
+    for path in (Path(p) for p in files):
+        # path.suffix returns only the last stuffix (.gz from .tar.gz)
+        full_extension = "".join(path.suffixes)
+        if not (full_extension == ".asm" or full_extension.endswith(".asm")):
+            continue
+        if show_full_path:
+            print(str(path))
+        else:
+            print(path.name)
 
 
 def main(
     argv: Sequence[str] | None = None,
-    argument_parser: argparse.ArgumentParser = _DEFAULT_PARSER
+    argument_parser: argparse.ArgumentParser = DEFAULT_ARGUMENT_PARSER
 ):
     args = argument_parser.parse_args(args=argv)
 
     logger.setLevel(logging.INFO)
 
+    examples = digicpu.data.programs
     action = args.action
+
     source: str | None = None
     match action:
+        case RunActions.LIST_EXAMPLES:
+            files = get_example_files(examples)
+            show_full_path = args.show_full_path
+            print_only_asm_files(
+                files=files, show_full_path=show_full_path)
+            return
         case RunActions.RUN_EXTERNAL:
             source = args.file.read()
         case RunActions.RUN_EXAMPLE:
-            source = pkg_resources.read_text(digicpu.data.programs, args.name)
+            name = args.name
+            source = pkg_resources.read_text(examples, name)
         case _:
-            raise NotImplementedError(f"{action=!r} not yet implemented")
-    _window = do_all_init(source_asm=source)
+            raise NotImplementedError(
+                f"{action=!r} either not yet implemented, or something is wrong.")
 
-    arcade.run()
+    run_digicpu(source=source)
