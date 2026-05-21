@@ -294,6 +294,12 @@ def build_parser() -> argparse.ArgumentParser:
         "file", type=argparse.FileType(mode='r', encoding='UTF-8'),
         help="Either a path to a DigiCPU .asm file or - to pipe from stdin")
 
+    run_example = _build_subparser(
+        RunActions.RUN_EXAMPLE, help="Run a build-in example file")
+    run_example.add_argument(
+        "name", type=str,
+        help="The name of an example file (see list-examples")
+
     return parser
 
 
@@ -314,10 +320,10 @@ def main(
     match action:
         case RunActions.RUN_EXTERNAL:
             source = args.file.read()
+        case RunActions.RUN_EXAMPLE:
+            source = pkg_resources.read_text(digicpu.data.programs, args.name)
         case _:
             raise NotImplementedError(f"{action=!r} not yet implemented")
     _window = do_all_init(source_asm=source)
-
-    # t = pkg_resources.read_text(digicpu.data.programs, PROGRAM)
 
     arcade.run()
