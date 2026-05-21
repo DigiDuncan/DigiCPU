@@ -1,5 +1,11 @@
-import importlib.resources as pkg_resources
+import argparse
 import logging
+import sys
+
+
+from enum import StrEnum
+import importlib.resources as pkg_resources
+from typing import Sequence
 
 import arcade
 import arrow
@@ -17,10 +23,11 @@ from digicpu.core.cpu import CPU
 from digicpu.lib.log import logger
 from digicpu.lib.sevenseg import SevenSeg
 
-PROGRAM = "ramdom.asm"
+
 
 class DigiCPUWindow(arcade.Window):
-    def __init__(self, width, height, title, fps: float = 600.0):
+
+    def __init__(self, width, height, title, source: str = "", fps: float = 600.0):
         super().__init__(width, height, title, update_rate = 1 / fps, draw_rate = 1 / fps)
         self.fps: float = fps
 
@@ -38,8 +45,7 @@ class DigiCPUWindow(arcade.Window):
             d.center_y = self.height * 0.75
             d.left = ((d.width / 11) * (n + 1)) + (d.width * (n + 1))
 
-        t = pkg_resources.read_text(digicpu.data.programs, PROGRAM)
-        self.cpu.load_string(t)
+        self.cpu.load_string(source)
 
         self.tick: int = 0
         self.tick_multiplier: int = 1
@@ -244,13 +250,74 @@ class DigiCPUWindow(arcade.Window):
         self.sprite_list.draw()
         self.text_batch.draw()
 
-def main():
+
+
+def do_all_init(source_asm: str | None = None) -> DigiCPUWindow:
     with pkg_resources.path(digicpu.data.fonts, "NES.ttf") as p:
         arcade.load_font(p)
     with pkg_resources.path(digicpu.data.fonts, "FIRACODE.ttf") as p:
         arcade.load_font(p)
+    _window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, source=source_asm)
+    _window.setup()
+
+    return _window
+
+
+class RunActions(StrEnum):
+    """An subcommand action."""
+
+    RUN_EXTERNAL  = 'run'
+    """Run an external file."""
+
+    RUN_EXAMPLE   = 'run-example'
+    """Run a built-in example."""
+
+    LIST_EXAMPLES = 'list-example'
+    """List all built-in examples."""
+
+
+def build_parser() -> argparse.ArgumentParser:
+
+    parser = argparse.ArgumentParser(prog=__file__)
+    subparsers = parser.add_subparsers(dest='action')
+    def _build_subparser(action: str, *args, **kwargs):
+        return subparsers.add_parser(
+            action.value,
+            *args,
+            **kwargs)
+
+    # stdin support is a fast, lazy way for VS Code and vim
+    # to run DigiCPU code
+    run_external = _build_subparser(
+        RunActions.RUN_EXTERNAL, help="Run an external source file")
+    run_external.add_argument(
+        "file", type=argparse.FileType(mode='r', encoding='UTF-8'),
+        help="Either a path to a DigiCPU .asm file or - to pipe from stdin")
+
+    return parser
+
+
+_DEFAULT_PARSER = build_parser()
+
+
+
+def main(
+    argv: Sequence[str] | None = None,
+    argument_parser: argparse.ArgumentParser = _DEFAULT_PARSER
+):
+    args = argument_parser.parse_args(args=argv)
 
     logger.setLevel(logging.INFO)
-    window = DigiCPUWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-    window.setup()
+
+    action = args.action
+    source: str | None = None
+    match action:
+        case RunActions.RUN_EXTERNAL:
+            source = args.file.read()
+        case _:
+            raise NotImplementedError(f"{action=!r} not yet implemented")
+    _window = do_all_init(source_asm=source)
+
+    # t = pkg_resources.read_text(digicpu.data.programs, PROGRAM)
+
     arcade.run()
