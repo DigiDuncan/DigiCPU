@@ -258,7 +258,7 @@ class RunActions(StrEnum):
 
     # Each docstring below becomes help text for its argparse subcommand.
     RUN_EXTERNAL  = 'run'
-    """Run external code from source or stdin via (-)"""
+    """Run external code from source or stdin via -"""
 
     RUN_EXAMPLE   = 'run-example'
     """Run a built-in example from digicpu.data.programs"""
